@@ -7,6 +7,8 @@ use mfrc522::{
     Initialized, Mfrc522,
 };
 
+use crate::ndef::NDEF;
+
 pub struct NTAG215 {
     pub mfrc522: Mfrc522<SpiInterface<Spidev, DummyNSS, DummyDelay>, Initialized>,
     pub memory: [u8; NTAG215::TOTAL_BYTES_COUNT],
@@ -85,6 +87,8 @@ impl NTAG215 {
                     println!("UID: {:02x}", uid.as_bytes().iter().format(""));
 
                     self.read_blocks();
+
+                    let ndef = NDEF::parse(&self.memory);
                 }
             }
             delay.delay_ms(100u32);

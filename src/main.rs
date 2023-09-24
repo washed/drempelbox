@@ -7,7 +7,6 @@ pub mod ntag215;
 use crate::ntag215::NTAG215;
 
 pub mod ndef;
-use crate::ndef::NDEF;
 
 fn main() {
     let mut spi = Spidev::open("/dev/spidev0.0").unwrap();
@@ -22,6 +21,4 @@ fn main() {
 
     let mut ntag = NTAG215::new(mfrc522);
     ntag.read();
-
-    let _ndef = NDEF::parse(&ntag.memory);
 }

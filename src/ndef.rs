@@ -64,6 +64,7 @@ impl NDEF {
                     i += 1;
 
                     let type_length = buffer[i] as usize;
+                    println!("type_length: {type_length}");
                     i += 1;
 
                     if flags_tnf.contains(Flags::SHORT_RECORD) {
@@ -74,18 +75,20 @@ impl NDEF {
                             u32::from_be_bytes(buffer[i..i + 4].try_into().expect("oof"));
                         i += 4;
                     }
+                    println!("payload_length: {payload_length}");
 
                     let mut id_length: usize = 0;
                     if flags_tnf.contains(Flags::ID_LENGTH_PRESENT) {
                         id_length = usize::from(buffer[i]);
                         i += 1;
                     }
+                    println!("id_length: {id_length}");
 
                     // TODO: some of these need some length checks
                     let mut payload_type = 0;
                     if type_length > 0 {
-                        payload_type =
-                            u32::from_be_bytes(buffer[i..i + type_length].try_into().expect("oof"));
+                        // payload_type =
+                        //     u32::from_be_bytes(buffer[i..i + type_length].try_into().expect("oof"));
                         i += type_length;
                     }
 
@@ -100,13 +103,15 @@ impl NDEF {
                     state = State::RecordData;
                 }
                 State::RecordData => {
-                    for block in buffer
-                        .get(0..(payload_length as usize))
-                        .expect("oh no")
-                        .chunks(8)
-                    {
+                    let data = buffer.get(i..(i + payload_length as usize)).expect("oh no");
+
+                    for block in data.chunks(8) {
                         println!("{:02x}", block.iter().format(""));
                     }
+
+                    let uri = str::from_utf8(data).expect("crap");
+                    println!("{uri}");
+                    break;
                 }
             }
         }
