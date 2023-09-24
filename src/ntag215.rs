@@ -9,7 +9,7 @@ use mfrc522::{
 
 pub struct NTAG215 {
     pub mfrc522: Mfrc522<SpiInterface<Spidev, DummyNSS, DummyDelay>, Initialized>,
-    memory: [u8; NTAG215::TOTAL_BYTES_COUNT],
+    pub memory: [u8; NTAG215::TOTAL_BYTES_COUNT],
 }
 
 impl NTAG215 {
