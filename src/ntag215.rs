@@ -82,7 +82,6 @@ impl NTAG215 {
         loop {
             if let Ok(atqa) = self.mfrc522.reqa() {
                 if let Ok(uid) = self.mfrc522.select(&atqa) {
-                    //println!("UID: {:?}", uid.as_bytes());
                     println!("UID: {:02x}", uid.as_bytes().iter().format(""));
 
                     self.read_blocks();
