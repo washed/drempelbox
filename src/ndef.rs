@@ -28,11 +28,12 @@ bitflags! {
 }
 
 pub enum WellKnownType {
-    Unknown,
     URI,
 }
 
-pub struct NDEF {}
+pub struct NDEF {
+    pub uri: String,
+}
 
 impl NDEF {
     const MESSAGE_INIT_MARKER: u8 = 0x03;
@@ -42,6 +43,8 @@ impl NDEF {
         let mut message_len: u8 = 0;
         let mut payload_length: u32 = 0;
         let mut i: usize = 0;
+
+        let mut uri: String = String::new();
 
         while i < buffer.len() {
             match state {
@@ -108,14 +111,41 @@ impl NDEF {
                     for block in data.chunks(8) {
                         println!("{:02x}", block.iter().format(""));
                     }
-
-                    let uri = str::from_utf8(data).expect("crap");
-                    println!("{uri}");
+                    uri = String::from_utf8(Vec::from(data)).expect("crap");
+                    println!("uri: {uri}");
                     break;
                 }
             }
         }
 
-        Self {}
+        Self { uri }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn parse_uri() {
+        const NDEF_MESSAGE: [u8; 82] = [
+            // header
+            0x03, 0x4f, 0xd1, 0x01, 0x4b, 0x55, //
+            // payload
+            0x04, 0x6f, 0x70, 0x65, 0x6e, 0x2e, 0x73, 0x70, //
+            0x6f, 0x74, 0x69, 0x66, 0x79, 0x2e, 0x63, 0x6f, //
+            0x6d, 0x2f, 0x70, 0x6c, 0x61, 0x79, 0x6c, 0x69, //
+            0x73, 0x74, 0x2f, 0x36, 0x32, 0x51, 0x39, 0x4a, //
+            0x75, 0x67, 0x79, 0x74, 0x52, 0x45, 0x44, 0x74, //
+            0x6c, 0x34, 0x69, 0x34, 0x66, 0x63, 0x48, 0x66, //
+            0x58, 0x3f, 0x73, 0x69, 0x3d, 0x50, 0x57, 0x32, //
+            0x6b, 0x4c, 0x77, 0x54, 0x47, 0x51, 0x36, 0x36, //
+            0x5f, 0x4e, 0x55, 0x45, 0x46, 0x4a, 0x44, 0x36, //
+            0x57, 0x59, 0x67, 0xfe,
+        ];
+        const URI_DECODED: &str =
+            "\u{4}open.spotify.com/playlist/62Q9JugytREDtl4i4fcHfX?si=PW2kLwTGQ66_NUEFJD6WYg";
+
+        let ndef = crate::ndef::NDEF::parse(&NDEF_MESSAGE);
+
+        assert_eq!(ndef.uri, URI_DECODED);
     }
 }
