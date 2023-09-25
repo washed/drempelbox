@@ -30,6 +30,7 @@ impl NTAG215 {
         / NTAG215::PAGE_SIZE_BYTES as f64) as usize;
 
     // memory region offsets (ends are inclusive)
+    /*
     const UID_START: u32 = 0;
     const UID_END: u32 = 8;
 
@@ -65,6 +66,7 @@ impl NTAG215 {
 
     const RFUI_1_START: u32 = 534;
     const RFUI_1_END: u32 = 535;
+    */
 
     pub fn new(
         mut mfrc522: Mfrc522<SpiInterface<Spidev, DummyNSS, DummyDelay>, Initialized>,
@@ -88,7 +90,7 @@ impl NTAG215 {
 
                     self.read_blocks();
 
-                    let ndef = NDEF::parse(&self.memory);
+                    let _ndef = NDEF::parse(&self.memory);
                 }
             }
             delay.delay_ms(100u32);
