@@ -32,7 +32,9 @@ pub enum WellKnownType {
 }
 
 pub struct NDEF {
+    // pub records: Vec<WellKnownType>,
     pub uri: String,
+    // pub uri_2: str,
 }
 
 impl NDEF {
@@ -43,6 +45,8 @@ impl NDEF {
         let mut message_len: u8 = 0;
         let mut payload_length: u32 = 0;
         let mut i: usize = 0;
+
+        // let mut records = Vec::new();
 
         let mut uri: String = String::new();
 
