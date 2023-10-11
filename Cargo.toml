@@ -11,3 +11,11 @@ linux-embedded-hal = "0.3.2"
 embedded-hal = "0.2.7"
 itertools = "0.11.0"
 bitflags = "2.4.0"
+tokio = { version = "1", features = ["full"] }
+chrono = "0.4.31"
+axum = { version = "0.6.20", features = ["headers", "macros", "query"] }
+futures = "0.3"
+tokio-stream = { version = "0.1.14", features = ["sync"] }
+serde = { version = "1.0.188", features = ["derive"] }
+serde_json = "1.0.107"
+rodio = "0.17.1"
