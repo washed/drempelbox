@@ -3,7 +3,7 @@ use linux_embedded_hal::Spidev;
 use mfrc522::comm::eh02::spi::SpiInterface;
 use mfrc522::Mfrc522;
 
-use axum::{debug_handler, extract::Query, extract::State, routing::get, Router};
+use axum::{debug_handler, extract::Query, extract::State, routing::post, Router};
 use serde::Deserialize;
 use std::env;
 use tokio::sync::broadcast;
@@ -72,6 +72,12 @@ async fn start_sink_handler(
                 Ok(sink_message) => match sink_message {
                     SinkRequestMessage::File(path) => {
                         info!(path, "received file sink request");
+
+                        match try_stop_spotify().await {
+                            Ok(_) => {}
+                            Err(e) => error!(e, "Error stopping spotify playback!"),
+                        };
+
                         match try_play_file(&sink, path, true).await {
                             Ok(_) => {}
                             Err(e) => error!(e, "Error playing file!"),
@@ -80,40 +86,60 @@ async fn start_sink_handler(
                     SinkRequestMessage::Spotify(uri) => {
                         info!(uri, "received spotify sink request");
 
-                        let uri = Url::parse(&uri).unwrap();
-                        // let (context_type, context_id) = uri.path().split("/").;
+                        match try_stop_file(&sink).await {
+                            Ok(_) => {}
+                            Err(e) => error!(e, "Error stopping file playback!"),
+                        };
 
-                        if let Some((context_type, context_id)) =
-                            uri.path().trim_matches('/').split_once('/')
-                        {
-                            let result = Command::new("spotify_player")
-                                .args([
-                                    "playback",
-                                    "start",
-                                    "context",
-                                    "--id",
-                                    context_id,
-                                    context_type,
-                                ])
-                                .output()
-                                .unwrap();
-
-                            if context_type == "track" {
-                                error!("spotify_player does not support playing individual tracks :(");
-                                continue;
-                            }
-
-                            let status_code = result.status.code().unwrap();
-                            let stdout = String::from_utf8(result.stdout).unwrap();
-                            let stderr = String::from_utf8(result.stderr).unwrap();
-                            info!(status_code, stdout, stderr, "spotify_player says:");
-                        }
+                        match try_play_spotify(uri).await {
+                            Ok(_) => {}
+                            Err(e) => error!(e, "Error playing spotify!"),
+                        };
                     }
                 },
                 Err(e) => error!("Error receiving sink message {e}"),
             }
         }
     });
+}
+
+async fn try_play_spotify(uri: String) -> Result<(), Box<dyn std::error::Error>> {
+    let uri = Url::parse(&uri)?;
+
+    // TODO: make the uri parsing more robust
+    if let Some((context_type, context_id)) = uri.path().trim_matches('/').split_once('/') {
+        let result = Command::new("spotify_player")
+            .args([
+                "playback",
+                "start",
+                "context",
+                "--id",
+                context_id,
+                context_type,
+            ])
+            .output()?;
+
+        if context_type == "track" {
+            // TODO: could we work around this with temporary playlists?!
+            return Err(Box::<dyn std::error::Error>::from(
+                "spotify_player does not support playing individual tracks :(",
+            ));
+        }
+
+        let status_code = result.status.code().unwrap();
+        let stdout = String::from_utf8(result.stdout)?;
+        let stderr = String::from_utf8(result.stderr)?;
+        info!(status_code, stdout, stderr, "spotify_player says:");
+        return Ok(());
+    }
+
+    Err(Box::<dyn std::error::Error>::from("error splitting uri"))
+}
+
+async fn try_stop_spotify() -> Result<(), Box<dyn std::error::Error>> {
+    // TODO: implement!
+    // This might be a bit harder, we'd need to know if we are currently playing or not
+    Err(Box::<dyn std::error::Error>::from("not implemented!"))
 }
 
 async fn try_play_file(
@@ -141,6 +167,20 @@ async fn try_play_file(
     sink.play();
 
     // sink.sleep_until_end(); // to block or not to block
+
+    Ok(())
+}
+
+async fn try_stop_file(sink: &RodioSink) -> Result<(), Box<dyn std::error::Error>> {
+    let sink: std::sync::MutexGuard<'_, Sink> = match sink.lock() {
+        Ok(res) => res,
+        Err(e) => {
+            error!("Error acquiring lock on RodioSink");
+            return Err(Box::<dyn std::error::Error>::from(e.to_string()));
+        }
+    };
+
+    sink.stop();
 
     Ok(())
 }
@@ -189,8 +229,8 @@ async fn start_server(app_state: AppState) -> Result<(), Box<dyn std::error::Err
     info!("Starting http server...");
 
     let app = Router::new()
-        .route("/spotify", get(spotify_url))
-        .route("/file", get(file))
+        .route("/spotify", post(spotify_url))
+        .route("/file", post(file))
         .with_state(app_state);
 
     let bind_address: std::net::SocketAddr = env::var("BIND_ADDRESS")?.parse()?;
