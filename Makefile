@@ -4,14 +4,7 @@
 # 	cargo build
 
 up:
-	@echo "Starting spotify_player daemon..."
-	spotify_player -d
-	@echo "spotify_player daemon started!"
 	cargo run
-
-install:
-	cargo install spotify_player --features daemon
-	spotify_player authenticate
 
 build:
 	-docker buildx create --use --name drempelbox-builder --platform linux/amd64,linux/arm64
