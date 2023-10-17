@@ -25,7 +25,6 @@ Change to any swap size you feel appropriate for your needs.
 ## Required packages for developing (debian):
 
 - libasound2-dev
-- libdbus-1-dev
 - libssl-dev
 - pkg-config
 

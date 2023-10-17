@@ -3,10 +3,7 @@ FROM --platform=$TARGETPLATFORM rust:1-bookworm as builder
 ARG TARGETPLATFORM
 RUN echo $TARGETPLATFORM
 
-RUN apt-get clean && apt-get update && apt-get install libasound2-dev libdbus-1-dev libssl-dev pkg-config -y
-
-FROM builder as spotify-player-builder
-RUN cargo install --root /usr/src/spotify_player spotify_player --features daemon
+RUN apt-get clean && apt-get update && apt-get install libasound2-dev pkg-config -y
 
 FROM builder as drempelbox-builder
 
@@ -24,4 +21,3 @@ RUN cargo build --release
 
 FROM scratch AS export
 COPY --from=drempelbox-builder /usr/src/drempelbox/target/release/drempelbox ./
-COPY --from=spotify-player-builder /usr/src/spotify_player/bin/spotify_player ./
