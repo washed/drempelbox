@@ -17,7 +17,7 @@ use librespot::{
 use std::env;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tracing::{error, info};
+use tracing::info;
 use url::Url;
 
 pub struct SpotifyPlayer {
