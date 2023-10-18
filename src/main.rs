@@ -19,7 +19,7 @@ pub mod ntag;
 use crate::ntag::start_ntag_reader_task;
 
 pub mod player;
-use crate::player::{start_sink_handler, PlayerRequestMessage};
+use crate::player::{start_player_task, PlayerRequestMessage};
 
 #[tokio::main()]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -33,7 +33,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut join_set = JoinSet::<()>::new();
 
-    start_sink_handler(&mut join_set, receiver, file_player, spotify_player).await;
+    start_player_task(&mut join_set, receiver, file_player, spotify_player).await;
     start_ntag_reader_task(&mut join_set).await;
     start_server_task(&mut join_set, app_state).await;
 

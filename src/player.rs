@@ -11,7 +11,7 @@ pub enum PlayerRequestMessage {
     Spotify(String),
 }
 
-pub async fn start_sink_handler(
+pub async fn start_player_task(
     join_set: &mut JoinSet<()>,
     mut receiver: broadcast::Receiver<PlayerRequestMessage>,
     file_player: FilePlayer,
