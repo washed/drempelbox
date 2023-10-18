@@ -1,10 +1,9 @@
-use async_std::prelude::*;
 use async_std::sync::Arc;
 use rodio::{Decoder, OutputStream, Sink};
 use std::fs::File;
 use std::io::BufReader;
 use tokio::sync::Mutex; // this is more expensive than std::sync::Mutex but makes using it across awaits easier
-use tracing::{error, info};
+use tracing::info;
 
 pub struct FilePlayer {
     sink: Arc<Mutex<Sink>>,
