@@ -10,7 +10,7 @@ FROM builder as drempelbox-builder
 # dummy project to cache deps
 WORKDIR /usr/src/
 RUN cargo new drempelbox
-COPY Cargo.toml Cargo.lock /usr/src//drempelbox/
+COPY Cargo.toml Cargo.lock /usr/src/drempelbox/
 WORKDIR /usr/src/drempelbox/
 RUN cargo build --release
 
