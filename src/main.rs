@@ -1,45 +1,26 @@
+use async_std::prelude::*;
+use axum::{debug_handler, extract::Query, extract::State, routing::post, Router};
 use linux_embedded_hal::spidev::{SpiModeFlags, SpidevOptions};
 use linux_embedded_hal::Spidev;
 use mfrc522::comm::eh02::spi::SpiInterface;
 use mfrc522::Mfrc522;
-
-use axum::{debug_handler, extract::Query, extract::State, routing::post, Router};
 use serde::Deserialize;
 use std::env;
 use tokio::sync::broadcast;
 use tokio::task::JoinSet;
-
-use rodio::{Decoder, OutputStream, Sink};
-use std::fs::File;
-use std::io::BufReader;
-use std::sync::Arc;
-use tokio::sync::Mutex; // this is more expensive than std::sync::Mutex but makes using it across awaits easier
 use tracing::{error, info};
 use tracing_subscriber;
-use url::Url;
-
-use librespot::{
-    core::{
-        authentication::Credentials,
-        config::SessionConfig,
-        session::Session,
-        spotify_id::{SpotifyAudioType, SpotifyId},
-    },
-    playback::{
-        audio_backend,
-        config::{AudioFormat, PlayerConfig},
-        mixer::NoOpVolume,
-        player::Player,
-    },
-};
 
 pub mod ntag215;
 use crate::ntag215::NTAG215;
 
 pub mod ndef;
 
-type RodioSink = Arc<Mutex<Sink>>;
-type SpotifyPlayer = Arc<Mutex<Player>>;
+pub mod spotify_player;
+use crate::spotify_player::SpotifyPlayer;
+
+pub mod file_player;
+use crate::file_player::FilePlayer;
 
 #[derive(Clone)]
 struct AppState {
@@ -50,19 +31,15 @@ struct AppState {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
-    let player = get_spotify_player().await?;
-    let player = Arc::new(Mutex::new(player));
-
-    let (_stream, stream_handle) = OutputStream::try_default()?;
-    let sink = Sink::try_new(&stream_handle)?;
-    let sink = Arc::new(Mutex::new(sink));
+    let spotify_player = SpotifyPlayer::new().await?;
+    let file_player = FilePlayer::new().await?;
 
     let (sender, receiver) = broadcast::channel::<SinkRequestMessage>(16);
     let app_state = AppState { sender };
 
     let mut join_set = JoinSet::<()>::new();
 
-    start_sink_handler(&mut join_set, receiver, sink.clone(), player.clone()).await;
+    start_sink_handler(&mut join_set, receiver, file_player, spotify_player).await;
     start_ntag_reader_task(&mut join_set).await;
     start_server_task(&mut join_set, app_state).await;
 
@@ -74,30 +51,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn get_spotify_player() -> Result<Player, Box<dyn std::error::Error>> {
-    let session_config = SessionConfig::default();
-    let player_config = PlayerConfig::default();
-    let audio_format = AudioFormat::default();
-
-    let spotify_username: String = env::var("SPOTIFY_USERNAME")?.parse()?;
-    let spotify_password: String = env::var("SPOTIFY_PASSWORD")?.parse()?;
-
-    let credentials = Credentials::with_password(&spotify_username, &spotify_password);
-    let backend: fn(Option<String>, AudioFormat) -> Box<dyn audio_backend::Sink> =
-        audio_backend::find(None).unwrap();
-
-    println!("Connecting...");
-    let (session, _credentials) =
-        Session::connect(session_config, credentials, None, false).await?;
-
-    let (player, _receiver) =
-        Player::new(player_config, session, Box::new(NoOpVolume), move || {
-            backend(None, audio_format)
-        });
-
-    Ok(player)
-}
-
 #[derive(Debug, Clone)]
 enum SinkRequestMessage {
     File(String),
@@ -107,8 +60,8 @@ enum SinkRequestMessage {
 async fn start_sink_handler(
     join_set: &mut JoinSet<()>,
     mut receiver: broadcast::Receiver<SinkRequestMessage>,
-    sink: RodioSink,
-    player: SpotifyPlayer,
+    file_player: FilePlayer,
+    mut spotify_player: SpotifyPlayer,
 ) {
     join_set.spawn(async move {
         loop {
@@ -117,12 +70,11 @@ async fn start_sink_handler(
                     SinkRequestMessage::File(path) => {
                         info!(path, "received file sink request");
 
-                        match try_stop_spotify(&player).await {
+                        match spotify_player.stop().await {
                             Ok(_) => {}
                             Err(e) => error!(e, "Error stopping spotify playback!"),
                         };
-
-                        match try_play_file(&sink, path, true).await {
+                        match file_player.play(path, true).await {
                             Ok(_) => {}
                             Err(e) => error!(e, "Error playing file!"),
                         };
@@ -130,12 +82,12 @@ async fn start_sink_handler(
                     SinkRequestMessage::Spotify(uri) => {
                         info!(uri, "received spotify sink request");
 
-                        match try_stop_file(&sink).await {
+                        match file_player.stop().await {
                             Ok(_) => {}
                             Err(e) => error!(e, "Error stopping file playback!"),
                         };
 
-                        match try_play_spotify(&player, uri).await {
+                        match spotify_player.play_from_url(uri).await {
                             Ok(_) => {}
                             Err(e) => error!(e, "Error playing spotify!"),
                         };
@@ -145,67 +97,6 @@ async fn start_sink_handler(
             }
         }
     });
-}
-
-async fn try_play_spotify(
-    player: &SpotifyPlayer,
-    uri: String,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let mut player = player.lock().await;
-
-    let uri = Url::parse(&uri)?;
-
-    // TODO: make the uri parsing more robust
-    if let Some((context_type, context_id)) = uri.path().trim_matches('/').split_once('/') {
-        match context_type {
-            "track" => {
-                let mut track = SpotifyId::from_base62(&context_id).unwrap();
-                track.audio_type = SpotifyAudioType::Track;
-                player.load(track, true, 0);
-                println!("Playing...");
-                // player.await_end_of_track().await; // to block or not to block
-            }
-            _ => info!("Unknown spotify context_type"),
-        }
-        return Ok(());
-    }
-
-    Err(Box::<dyn std::error::Error>::from("error splitting uri"))
-}
-
-async fn try_stop_spotify(player: &SpotifyPlayer) -> Result<(), Box<dyn std::error::Error>> {
-    let player = player.lock().await;
-    player.stop();
-    Ok(())
-}
-
-async fn try_play_file(
-    sink: &RodioSink,
-    file_path: String,
-    play_immediately: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let sink = sink.lock().await;
-    let file = File::open(&file_path)?;
-    let file = BufReader::new(file);
-    let source = Decoder::new(file)?;
-
-    if play_immediately == true && !sink.empty() {
-        sink.clear();
-    }
-
-    info!(file_path, "Appending to sink queue");
-    sink.append(source);
-    sink.play();
-
-    // sink.sleep_until_end(); // to block or not to block
-
-    Ok(())
-}
-
-async fn try_stop_file(sink: &RodioSink) -> Result<(), Box<dyn std::error::Error>> {
-    let sink = sink.lock().await;
-    sink.stop();
-    Ok(())
 }
 
 async fn start_ntag_reader_task(join_set: &mut JoinSet<()>) {
