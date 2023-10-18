@@ -5,15 +5,11 @@ use tokio::sync::broadcast;
 use tokio::task::JoinSet;
 use tracing::{error, info};
 
-#[derive(Debug, Clone)]
-pub enum SinkRequestMessage {
-    File(String),
-    Spotify(String),
-}
+use crate::player::PlayerRequestMessage;
 
 #[derive(Clone)]
 pub struct AppState {
-    pub sender: broadcast::Sender<SinkRequestMessage>,
+    pub sender: broadcast::Sender<PlayerRequestMessage>,
 }
 
 pub async fn start_server_task(join_set: &mut JoinSet<()>, app_state: AppState) {
@@ -54,7 +50,7 @@ async fn spotify_url(State(state): State<AppState>, spotify_query: Query<Spotify
 
     info!(uri, "Got spotify request");
 
-    match state.sender.send(SinkRequestMessage::Spotify(uri)) {
+    match state.sender.send(PlayerRequestMessage::Spotify(uri)) {
         Ok(res) => info!(res, "submitted spotify request"),
         Err(e) => error!("error submitting spotify request: {e}"),
     };
@@ -72,7 +68,7 @@ async fn file(State(state): State<AppState>, file_query: Query<FileQuery>) {
 
     info!(path, "got file play request");
 
-    match state.sender.send(SinkRequestMessage::File(path)) {
+    match state.sender.send(PlayerRequestMessage::File(path)) {
         Ok(res) => info!(res, "submitted file request"),
         Err(e) => error!("error submitting file request: {e}"),
     };
