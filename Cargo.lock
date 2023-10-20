@@ -764,6 +764,7 @@ dependencies = [
  "librespot",
  "linux-embedded-hal",
  "mfrc522",
+ "pin-project-lite",
  "rodio 0.17.1",
  "serde",
  "serde_json",
