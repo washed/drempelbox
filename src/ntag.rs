@@ -15,7 +15,14 @@ use tokio_stream::StreamExt;
 use tracing::{error, info};
 use url::Url;
 
-pub async fn start_ntag_reader_task(
+pub async fn start_ntag_reader_task(join_set: &mut JoinSet<()>, app_state: AppState) {
+    match start_ntag_reader_task_impl(join_set, app_state).await {
+        Ok(_) => {}
+        Err(e) => error!(e, "error starting ntag reader task"),
+    }
+}
+
+async fn start_ntag_reader_task_impl(
     join_set: &mut JoinSet<()>,
     app_state: AppState,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -45,7 +52,14 @@ pub async fn start_ntag_reader_task(
                     let mut ntag = ntag_rx.lock().await;
                     match ntag.read() {
                         Ok(ndef) => {
-                            let url = Url::parse(&ndef.uri).unwrap();
+                            let url = match Url::parse(&ndef.uri) {
+                                Ok(url) => url,
+                                Err(e) => {
+                                    let e = e.to_string();
+                                    error!(e, "error parsing url from token");
+                                    continue;
+                                }
+                            };
                             match app_state.sender.send(PlayerRequestMessage::URL(url)) {
                                 Ok(_) => {}
                                 Err(_) => error!("couldn't send spotify request from ntag"),

@@ -37,7 +37,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut join_set = JoinSet::<()>::new();
 
     start_player_task(&mut join_set, receiver, file_player, spotify_player).await;
-    start_ntag_reader_task(&mut join_set, app_state.clone()).await?; // make this infallible
+    start_ntag_reader_task(&mut join_set, app_state.clone()).await;
     start_server_task(&mut join_set, app_state.clone()).await;
 
     while let Some(_res) = join_set.join_next().await {
