@@ -7,6 +7,7 @@ use crate::spotify_player::SpotifyPlayer;
 
 #[derive(Debug, Clone)]
 pub enum PlayerRequestMessage {
+    Stop,
     File(String),
     Spotify(String),
 }
@@ -21,8 +22,20 @@ pub async fn start_player_task(
         loop {
             match receiver.recv().await {
                 Ok(sink_message) => match sink_message {
+                    PlayerRequestMessage::Stop => {
+                        info!("received stop request");
+
+                        match file_player.stop().await {
+                            Ok(_) => {}
+                            Err(e) => error!(e, "Error stopping file playback!"),
+                        };
+                        match spotify_player.stop().await {
+                            Ok(_) => {}
+                            Err(e) => error!(e, "Error stopping spotify playback!"),
+                        };
+                    }
                     PlayerRequestMessage::File(path) => {
-                        info!(path, "received file sink request");
+                        info!(path, "received file player request");
 
                         match spotify_player.stop().await {
                             Ok(_) => {}
@@ -34,7 +47,7 @@ pub async fn start_player_task(
                         };
                     }
                     PlayerRequestMessage::Spotify(uri) => {
-                        info!(uri, "received spotify sink request");
+                        info!(uri, "received spotify player request");
 
                         match file_player.stop().await {
                             Ok(_) => {}
