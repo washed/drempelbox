@@ -188,7 +188,7 @@ mod tests {
             0x57, 0x59, 0x67, 0xfe,
         ];
         const URI_DECODED: &str =
-            "\u{4}open.spotify.com/playlist/62Q9JugytREDtl4i4fcHfX?si=PW2kLwTGQ66_NUEFJD6WYg";
+            "https://open.spotify.com/playlist/62Q9JugytREDtl4i4fcHfX?si=PW2kLwTGQ66_NUEFJD6WYg";
 
         let ndef = crate::ndef::NDEF::parse(&NDEF_MESSAGE);
 
