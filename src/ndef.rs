@@ -152,7 +152,7 @@ impl NDEF {
                 State::RecordData => {
                     let prefix_byte = buffer.get(i).expect("boing");
                     let data = buffer
-                        .get(i + 1..(i + payload_length as usize - 1))
+                        .get(i + 1..(i + payload_length as usize))
                         .expect("oh no");
 
                     uri = PREFIX_STRINGS[usize::from(*prefix_byte)].to_owned();
