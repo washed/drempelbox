@@ -1,5 +1,4 @@
 use bitflags::bitflags;
-use itertools::Itertools;
 use std::str;
 
 enum State {
@@ -27,6 +26,45 @@ bitflags! {
     }
 }
 
+const PREFIX_STRINGS: &[&str] = &[
+    "",
+    "http://www.",
+    "https://www.",
+    "http://",
+    "https://",
+    "tel:",
+    "mailto:",
+    "ftp://anonymous:anonymous@",
+    "ftp://ftp.",
+    "ftps://",
+    "sftp://",
+    "smb://",
+    "nfs://",
+    "ftp://",
+    "dav://",
+    "news:",
+    "telnet://",
+    "imap:",
+    "rtsp://",
+    "urn:",
+    "pop:",
+    "sip:",
+    "sips:",
+    "tftp:",
+    "btspp://",
+    "btl2cap://",
+    "btgoep://",
+    "tcpobex://",
+    "irdaobex://",
+    "file://",
+    "urn:epc:id:",
+    "urn:epc:tag:",
+    "urn:epc:pat:",
+    "urn:epc:raw:",
+    "urn:epc:",
+    "urn:nfc:",
+];
+
 pub enum WellKnownType {
     URI,
 }
@@ -38,6 +76,8 @@ pub struct NDEF {
 }
 
 impl NDEF {
+    // TODO: This is a terrible ndef "parser" which is barely MVP ready!
+
     const MESSAGE_INIT_MARKER: u8 = 0x03;
 
     pub fn parse(buffer: &[u8]) -> Self {
@@ -110,12 +150,14 @@ impl NDEF {
                     state = State::RecordData;
                 }
                 State::RecordData => {
-                    let data = buffer.get(i..(i + payload_length as usize)).expect("oh no");
+                    let prefix_byte = buffer.get(i).expect("boing");
+                    let data = buffer
+                        .get(i + 1..(i + payload_length as usize - 1))
+                        .expect("oh no");
 
-                    for block in data.chunks(8) {
-                        println!("{:02x}", block.iter().format(""));
-                    }
-                    uri = String::from_utf8(Vec::from(data)).expect("crap");
+                    uri = PREFIX_STRINGS[usize::from(*prefix_byte)].to_owned();
+                    uri.push_str(String::from_utf8(Vec::from(data)).expect("crap").as_str());
+
                     println!("uri: {uri}");
                     break;
                 }

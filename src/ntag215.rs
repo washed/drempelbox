@@ -1,10 +1,7 @@
-use embedded_hal::blocking::delay::DelayMs;
-use itertools::Itertools;
-use linux_embedded_hal::Delay;
 use linux_embedded_hal::Spidev;
 use mfrc522::{
     comm::eh02::spi::{DummyDelay, DummyNSS, SpiInterface},
-    Initialized, Mfrc522,
+    Initialized, Mfrc522, Uid,
 };
 
 use crate::ndef::NDEF;
@@ -80,21 +77,32 @@ impl NTAG215 {
         }
     }
 
-    pub fn read(&mut self) {
-        let mut delay = Delay;
-
-        loop {
-            if let Ok(atqa) = self.mfrc522.reqa() {
-                if let Ok(uid) = self.mfrc522.select(&atqa) {
-                    println!("UID: {:02x}", uid.as_bytes().iter().format(""));
-
-                    self.read_blocks();
-
-                    let _ndef = NDEF::parse(&self.memory);
-                }
+    pub fn select(&mut self) -> Result<Uid, Box<dyn std::error::Error>> {
+        let atqa = self.mfrc522.reqa();
+        let atqa = match atqa {
+            Ok(atqa) => atqa,
+            Err(_) => {
+                self.mfrc522.hlta()?;
+                self.mfrc522.wupa()?
             }
-            delay.delay_ms(100u32);
+        };
+
+        Ok(self.mfrc522.select(&atqa)?)
+    }
+
+    pub fn is_token_present(&mut self) -> Option<Uid> {
+        match self.select() {
+            Ok(res) => Some(res),
+            Err(_) => None,
         }
+    }
+
+    pub fn read(&mut self) -> Result<NDEF, Box<dyn std::error::Error>> {
+        self.select()?;
+        self.read_blocks();
+
+        let ndef = NDEF::parse(&self.memory);
+        Ok(ndef)
     }
 
     fn read_blocks(&mut self) {
@@ -128,10 +136,5 @@ impl NTAG215 {
                 }
             }
         }
-
-        for block in self.memory.chunks(NTAG215::BLOCK_SIZE_BYTES as usize) {
-            println!("{:02x}", block.iter().format(""));
-        }
-        println!()
     }
 }
