@@ -21,6 +21,9 @@ use crate::ntag::start_ntag_reader_task;
 pub mod player;
 use crate::player::{start_player_task, PlayerRequestMessage};
 
+pub mod tuple_windows;
+
+
 #[tokio::main()]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
@@ -34,12 +37,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut join_set = JoinSet::<()>::new();
 
     start_player_task(&mut join_set, receiver, file_player, spotify_player).await;
-    start_ntag_reader_task(&mut join_set).await;
-    start_server_task(&mut join_set, app_state).await;
+    start_ntag_reader_task(&mut join_set, app_state.clone()).await?; // make this infallible
+    start_server_task(&mut join_set, app_state.clone()).await;
 
     while let Some(_res) = join_set.join_next().await {
         let err = _res.err().unwrap().to_string();
         error!(err, "Task finished unexpectedly!");
+        // TODO: we should probably crash the app at this point
     }
 
     Ok(())
