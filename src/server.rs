@@ -4,6 +4,7 @@ use std::env;
 use tokio::sync::broadcast;
 use tokio::task::JoinSet;
 use tracing::{error, info};
+use url::Url;
 
 use crate::player::PlayerRequestMessage;
 
@@ -24,10 +25,7 @@ pub async fn start_server_task(join_set: &mut JoinSet<()>, app_state: AppState) 
 async fn start_server(app_state: AppState) -> Result<(), Box<dyn std::error::Error>> {
     info!("Starting http server...");
 
-    let app = Router::new()
-        .route("/spotify", post(spotify_url))
-        .route("/file", post(file))
-        .with_state(app_state);
+    let app = Router::new().route("/url", post(url)).with_state(app_state);
 
     let bind_address: std::net::SocketAddr = env::var("BIND_ADDRESS")?.parse()?;
 
@@ -40,36 +38,19 @@ async fn start_server(app_state: AppState) -> Result<(), Box<dyn std::error::Err
 
 #[derive(Deserialize)]
 struct SpotifyQuery {
-    uri: String,
+    url: String,
 }
 
 #[debug_handler]
-async fn spotify_url(State(state): State<AppState>, spotify_query: Query<SpotifyQuery>) {
+async fn url(State(state): State<AppState>, spotify_query: Query<SpotifyQuery>) {
     let spotify_query: SpotifyQuery = spotify_query.0;
-    let uri = spotify_query.uri;
+    let url = spotify_query.url;
 
-    info!(uri, "Got spotify request");
+    info!(url, "Got spotify request");
+    let url = Url::parse(&url).expect("couldn't parse this");
 
-    match state.sender.send(PlayerRequestMessage::Spotify(uri)) {
+    match state.sender.send(PlayerRequestMessage::URL(url)) {
         Ok(res) => info!(res, "submitted spotify request"),
         Err(e) => error!("error submitting spotify request: {e}"),
-    };
-}
-
-#[derive(Deserialize)]
-struct FileQuery {
-    path: String,
-}
-
-#[debug_handler]
-async fn file(State(state): State<AppState>, file_query: Query<FileQuery>) {
-    let file_query: FileQuery = file_query.0;
-    let path = file_query.path;
-
-    info!(path, "got file play request");
-
-    match state.sender.send(PlayerRequestMessage::File(path)) {
-        Ok(res) => info!(res, "submitted file request"),
-        Err(e) => error!("error submitting file request: {e}"),
     };
 }

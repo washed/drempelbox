@@ -54,11 +54,9 @@ impl SpotifyPlayer {
         Ok(Self { session, player })
     }
 
-    pub async fn play_from_url(&mut self, uri: String) -> Result<(), Box<dyn std::error::Error>> {
-        let uri = Url::parse(&uri)?;
-
+    pub async fn play_from_url(&mut self, url: Url) -> Result<(), Box<dyn std::error::Error>> {
         // TODO: make the uri parsing more robust
-        if let Some((context_type, spotify_id)) = uri.path().trim_matches('/').split_once('/') {
+        if let Some((context_type, spotify_id)) = url.path().trim_matches('/').split_once('/') {
             let mut spotify_id = SpotifyId::from_base62(&spotify_id).unwrap();
             let mut player = self.player.lock().await;
             let session = self.session.lock().await;

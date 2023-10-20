@@ -13,6 +13,7 @@ use tokio::time::{sleep, Duration};
 use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::StreamExt;
 use tracing::{error, info};
+use url::Url;
 
 pub async fn start_ntag_reader_task(
     join_set: &mut JoinSet<()>,
@@ -43,13 +44,13 @@ pub async fn start_ntag_reader_task(
                     info!("new token: {:02x?}", uid);
                     let mut ntag = ntag_rx.lock().await;
                     match ntag.read() {
-                        Ok(ndef) => match app_state
-                            .sender
-                            .send(PlayerRequestMessage::Spotify(ndef.uri))
-                        {
-                            Ok(_) => {}
-                            Err(_) => error!("couldn't send spotify request from ntag"),
-                        },
+                        Ok(ndef) => {
+                            let url = Url::parse(&ndef.uri).unwrap();
+                            match app_state.sender.send(PlayerRequestMessage::URL(url)) {
+                                Ok(_) => {}
+                                Err(_) => error!("couldn't send spotify request from ntag"),
+                            }
+                        }
                         Err(e) => error!(e, "error parsing ndef"),
                     };
                 }

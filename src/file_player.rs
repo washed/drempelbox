@@ -24,6 +24,8 @@ impl FilePlayer {
         file_path: String,
         play_immediately: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
+        info!(file_path, "attempting to open file");
+
         let sink = self.sink.lock().await;
         let file = File::open(&file_path)?;
         let file = BufReader::new(file);
