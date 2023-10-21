@@ -1,16 +1,10 @@
-.PHONY: build up install
+.PHONY: build build-aarch64-unknown-linux-gnu build-x86_64-unknown-linux-gnu
 
-# build:
-# 	cargo build
+build: build-aarch64-unknown-linux-gnu build-x86_64-unknown-linux-gnu
 
-up:
-	cargo run
+build-aarch64-unknown-linux-gnu:
+	cross build --release --target=aarch64-unknown-linux-gnu
 
-build:
-	-docker buildx create --use --name drempelbox-builder --platform linux/amd64,linux/arm64
-	docker buildx build --platform linux/amd64,linux/arm64 -t drempelbox:latest --output docker_build .
-	docker buildx build -t drempelbox:latest --load --progress plain .
+build-x86_64-unknown-linux-gnu:
+	cross build --release --target=x86_64-unknown-linux-gnu
 
-debug-build:
-	-docker buildx create --use --name larger_log --platform linux/arm64 --driver-opt env.BUILDKIT_STEP_LOG_MAX_SIZE=50000000
-	docker buildx build --platform linux/arm64 -t drempelbox:latest --load --progress plain --no-cache .
