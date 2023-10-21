@@ -61,3 +61,43 @@ Assuming a 64 bit RaspberryPI OS lite, install these packages to enable audio su
 - pipewire-alsa
 
 Enable SPI for NFC ready support (using the raspi-config tool, for example).
+
+## Hardware
+
+Rough block diagram of system components:
+```mermaid
+classDiagram
+    USB_PD_Decoy o-- Powerbank : USB A to USB C cable
+    StepDownReg <|-- USB_PD_Decoy
+    Amplifier  <|-- USB_PD_Decoy
+    RaspberryPI_Zero_2W <|-- StepDownReg
+    Speakers <|-- Amplifier
+    USB_Soundcard <|-- RaspberryPI_Zero_2W
+    Amplifier <|-- USB_Soundcard
+     RaspberryPI_Zero_2W <|-- NFC_Module
+    class NFC_Module {
+    }
+    class RaspberryPI_Zero_2W {
+    }
+    class USB_Soundcard {
+    }
+    class Powerbank{
+        USB PD
+        SoC Display
+        USB C in/out
+        USB Micro in
+        USB A out
+        charge()
+        discharge()
+    }
+    class USB_PD_Decoy{
+        12V
+    }
+    class StepDownReg{
+        5V
+    }
+    class Amplifier{
+    }
+    class Speakers{
+    }
+```
