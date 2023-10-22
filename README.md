@@ -67,19 +67,22 @@ Enable SPI for NFC ready support (using the raspi-config tool, for example).
 Rough block diagram of system components:
 ```mermaid
 classDiagram
-    USB_PD_Decoy o-- Powerbank : USB A to USB C cable
-    StepDownReg <|-- USB_PD_Decoy
-    Amplifier  <|-- USB_PD_Decoy
-    RaspberryPI_Zero_2W <|-- StepDownReg
+    direction BT
+    USB_PD_Decoy o-- Powerbank : USB A to USB C
+    StepDownReg o-- USB_PD_Decoy : 12V
+    5VFilter <|-- StepDownReg
+    RPi <|-- 5VFilter : 5V micro USB
+    RPi <|--|> NFC_Module : 5V, SPI
+    USB_Soundcard *-- RPi : USB
+    Amplifier <|-- USB_Soundcard : 3.5mm TRS
+    Amplifier  o-- USB_PD_Decoy : 12V
     Speakers <|-- Amplifier
-    USB_Soundcard <|-- RaspberryPI_Zero_2W
-    Amplifier <|-- USB_Soundcard
-     RaspberryPI_Zero_2W <|-- NFC_Module
+
     class NFC_Module {
     }
-    class RaspberryPI_Zero_2W {
+    class RPi["RPi Zero 2W"] {
     }
-    class USB_Soundcard {
+    class USB_Soundcard["USB Soundcard"] {
     }
     class Powerbank{
         USB PD
@@ -90,14 +93,44 @@ classDiagram
         charge()
         discharge()
     }
-    class USB_PD_Decoy{
+    class USB_PD_Decoy["USB PD Decoy"]{
         12V
     }
-    class StepDownReg{
-        5V
+    class StepDownReg["5V DC/DC Buck"]{
+        12V -> 5V
     }
+    class 5VFilter["5V Filter"]
     class Amplifier{
     }
     class Speakers{
     }
+```
+
+## Software
+
+```mermaid
+flowchart
+    subgraph NTAG
+        present{token presence changed?} -- no --> delay((delay)) --> present
+        present -- added --> read[read token]
+        present -- removed --> sendreq_ntag_stop[send player stop  request]
+        read --> parse --> parse_ok
+        parse_ok{is url?} -- yes --> sendreq_ntag_play[send player play request]
+    end
+
+    subgraph Player
+        sendreq_ntag_stop --> stop{{stop all playback}}
+        sendreq_ntag_play --> type{file or https}
+        type -- file --> playfile{{stop spotify, play file}}
+        type -- https --> isspotify{starts with 'open.spotify.com'?}
+        isspotify -- no --> error
+        isspotify -- yes --> playspotify{{stop file, play spotify}}
+    end
+
+    subgraph HTTP
+        post_play[POST to play endpoint] --> query{has url query param?}
+        query -- yes --> type
+    end
+
+
 ```
