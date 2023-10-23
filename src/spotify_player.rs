@@ -1,6 +1,7 @@
 use librespot::{
     core::{
         authentication::Credentials,
+        config::ConnectConfig,
         config::SessionConfig,
         session::Session,
         spotify_id::{SpotifyAudioType, SpotifyId},
@@ -10,19 +11,25 @@ use librespot::{
     playback::{
         audio_backend,
         config::{AudioFormat, PlayerConfig},
-        mixer::NoOpVolume,
+        mixer::softmixer::SoftMixer,
+        mixer::{Mixer, MixerConfig, NoOpVolume},
         player::Player,
+        player::PlayerEvent,
     },
+    protocol::spirc::TrackRef,
 };
+use librespot_connect::spirc::{Spirc, SpircCommand};
 use std::env;
 use std::sync::Arc;
-use tokio::sync::Mutex;
+use tokio::join;
+use tokio::sync::{mpsc::UnboundedReceiver, Mutex};
 use tracing::info;
 use url::Url;
 
 pub struct SpotifyPlayer {
     session: Arc<Mutex<Session>>,
     player: Arc<Mutex<Player>>,
+    spirc: Arc<Mutex<Spirc>>,
 }
 
 impl SpotifyPlayer {
@@ -30,6 +37,7 @@ impl SpotifyPlayer {
         let session_config = SessionConfig::default();
         let player_config = PlayerConfig::default();
         let audio_format = AudioFormat::default();
+        let connect_config = ConnectConfig::default();
 
         let spotify_username: String = env::var("SPOTIFY_USERNAME")?.parse()?;
         let spotify_password: String = env::var("SPOTIFY_PASSWORD")?.parse()?;
@@ -41,25 +49,52 @@ impl SpotifyPlayer {
         let (session, _credentials) =
             Session::connect(session_config, credentials, None, false).await?;
 
-        let (player, _receiver) = Player::new(
+        let (player, player_event_receiver) = Player::new(
+            player_config.clone(),
+            session.clone(),
+            Box::new(NoOpVolume),
+            move || backend(None, audio_format),
+        );
+
+        let (spirc_player, _spirc_player_event_receiver) = Player::new(
             player_config,
             session.clone(),
             Box::new(NoOpVolume),
             move || backend(None, audio_format),
         );
 
+        let (spirc, spirc_task) = Spirc::new(
+            connect_config,
+            session.clone(),
+            spirc_player,
+            Box::new(SoftMixer::open(MixerConfig::default())),
+        );
+
+        // spirc_task?
+
         let session = Arc::new(Mutex::new(session));
         let player = Arc::new(Mutex::new(player));
+        let spirc = Arc::new(Mutex::new(spirc));
 
-        Ok(Self { session, player })
+        Ok(Self {
+            session,
+            player,
+            spirc,
+        })
+    }
+
+    fn parse_url<'a>(&'a self, url: &'a Url) -> Option<(&str, SpotifyId)> {
+        let (context_type, spotify_id) = url.path().trim_matches('/').split_once('/')?;
+        let spotify_id = SpotifyId::from_base62(&spotify_id).unwrap();
+        Some((context_type, spotify_id))
     }
 
     pub async fn play_from_url(&mut self, url: Url) -> Result<(), Box<dyn std::error::Error>> {
         // TODO: make the uri parsing more robust
-        if let Some((context_type, spotify_id)) = url.path().trim_matches('/').split_once('/') {
-            let mut spotify_id = SpotifyId::from_base62(&spotify_id).unwrap();
+        if let Some((context_type, mut spotify_id)) = self.parse_url(&url) {
             let mut player = self.player.lock().await;
             let session = self.session.lock().await;
+            let spirc = self.spirc.lock().await;
 
             match context_type {
                 "track" => {
@@ -79,7 +114,25 @@ impl SpotifyPlayer {
                     let album: Album = Album::get(&session, spotify_id).await.unwrap();
                     // TODO: do something with it!
                     // For now we just play the first song
-                    player.load(album.tracks[0], true, 0);
+                    // player.load(album.tracks[0], true, 0);
+
+                    /*
+                    let tracks: Vec<TrackRef> = album
+                        .tracks
+                        .into_iter()
+                        .map(|track_id| {
+                            let mut track = TrackRef::new();
+                            track.set_gid(Vec::from(track_id.to_raw()));
+                            track
+                        })
+                        .collect();
+                    */
+
+                    info!("Playing album: {}", &album.name);
+                    for track in album.tracks {
+                        player.load(track, false, 0);
+                    }
+                    player.play();
                 }
                 "artist" => {
                     let album: Artist = Artist::get(&session, spotify_id).await.unwrap();

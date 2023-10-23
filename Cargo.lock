@@ -762,6 +762,7 @@ dependencies = [
  "futures",
  "itertools",
  "librespot",
+ "librespot-connect",
  "linux-embedded-hal",
  "mfrc522",
  "pin-project-lite",
