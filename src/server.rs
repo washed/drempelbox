@@ -25,7 +25,10 @@ pub async fn start_server_task(join_set: &mut JoinSet<()>, app_state: AppState) 
 async fn start_server(app_state: AppState) -> Result<(), Box<dyn std::error::Error>> {
     info!("Starting http server...");
 
-    let app = Router::new().route("/url", post(url)).with_state(app_state);
+    let app = Router::new()
+        .route("/url", post(url))
+        .route("/stop", post(stop))
+        .with_state(app_state);
 
     let bind_address: std::net::SocketAddr = env::var("BIND_ADDRESS")?.parse()?;
 
@@ -52,5 +55,15 @@ async fn url(State(state): State<AppState>, spotify_query: Query<SpotifyQuery>) 
     match state.sender.send(PlayerRequestMessage::URL(url)) {
         Ok(res) => info!(res, "submitted spotify request"),
         Err(e) => error!("error submitting spotify request: {e}"),
+    };
+}
+
+#[debug_handler]
+async fn stop(State(state): State<AppState>) {
+    info!("Got stop request");
+
+    match state.sender.send(PlayerRequestMessage::Stop) {
+        Ok(res) => info!(res, "submitted stop request"),
+        Err(e) => error!("error submitting stop request: {e}"),
     };
 }
