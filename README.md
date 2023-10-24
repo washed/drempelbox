@@ -25,7 +25,8 @@ make build-aarch64-unknown-linux-gnu
 ```
 
 Cross uses a containerized build environment to make cross compilation easy, install any
-external dependencies for the build step in (Dockerfile.cross)[Dockerfile.cross].
+external dependencies for the build step in [Dockerfile.cross](Dockerfile.cross).
+Docker [buildx](https://docs.docker.com/build/architecture/#install-buildx) is required for monitoring the build progress.
 
 ### Building directly on the host
 
