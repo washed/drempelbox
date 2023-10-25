@@ -1,8 +1,7 @@
-use futures::Stream;
 use futures::task::Poll;
+use futures::Stream;
 use pin_project_lite::pin_project;
 use std::pin::Pin;
-// use tokio::macros::support::Poll;
 
 // borrowed with gratitude from https://stackoverflow.com/a/70623592/8059394
 

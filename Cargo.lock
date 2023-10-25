@@ -764,6 +764,7 @@ dependencies = [
  "librespot",
  "linux-embedded-hal",
  "mfrc522",
+ "percent-encoding",
  "pin-project-lite",
  "rodio 0.17.1",
  "serde",
