@@ -50,6 +50,28 @@ impl FilePlayer {
         sink.stop();
         Ok(())
     }
+
+    pub async fn volume_up(&self) {
+        let sink = self.sink.lock().await;
+        let current_volume = sink.volume();
+        let new_volume = current_volume + 0.01;
+        info!(
+            current_volume,
+            new_volume, "file player volume change request"
+        );
+        sink.set_volume(new_volume);
+    }
+
+    pub async fn volume_down(&self) {
+        let sink = self.sink.lock().await;
+        let current_volume = sink.volume();
+        let new_volume = current_volume - 0.01;
+        info!(
+            current_volume,
+            new_volume, "file player volume change request"
+        );
+        sink.set_volume(new_volume);
+    }
 }
 
 unsafe impl Send for FilePlayer {}
