@@ -11,6 +11,8 @@ use url::Url;
 pub enum PlayerRequestMessage {
     Stop,
     URL(Url),
+    VolumeUp,
+    VolumeDown,
 }
 
 pub async fn start_player_task(
@@ -46,6 +48,20 @@ pub async fn start_player_task(
                             }
                             &_ => info!(log_url, "not sure what to do with this url"),
                         }
+                    }
+                    PlayerRequestMessage::VolumeUp => {
+                        file_player.volume_up().await;
+                        match spotify_player.volume_up().await {
+                            Ok(()) => {}
+                            Err(e) => error!(e, "error changing spotify player volume!"),
+                        };
+                    }
+                    PlayerRequestMessage::VolumeDown => {
+                        file_player.volume_down().await;
+                        match spotify_player.volume_down().await {
+                            Ok(()) => {}
+                            Err(e) => error!(e, "error changing spotify player volume!"),
+                        };
                     }
                 },
                 Err(e) => error!("Error receiving sink message {e}"),

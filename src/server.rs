@@ -28,6 +28,8 @@ async fn start_server(app_state: AppState) -> Result<(), Box<dyn std::error::Err
     let app = Router::new()
         .route("/url", post(url))
         .route("/stop", post(stop))
+        .route("/volume/up", post(volume_up))
+        .route("/volume/down", post(volume_down))
         .with_state(app_state);
 
     let bind_address: std::net::SocketAddr = env::var("BIND_ADDRESS")?.parse()?;
@@ -65,5 +67,25 @@ async fn stop(State(state): State<AppState>) {
     match state.sender.send(PlayerRequestMessage::Stop) {
         Ok(res) => info!(res, "submitted stop request"),
         Err(e) => error!("error submitting stop request: {e}"),
+    };
+}
+
+#[debug_handler]
+async fn volume_up(State(state): State<AppState>) {
+    info!("Got volume up request");
+
+    match state.sender.send(PlayerRequestMessage::VolumeUp) {
+        Ok(res) => info!(res, "submitted volume up request"),
+        Err(e) => error!("error submitting volume up request: {e}"),
+    };
+}
+
+#[debug_handler]
+async fn volume_down(State(state): State<AppState>) {
+    info!("Got volume down request");
+
+    match state.sender.send(PlayerRequestMessage::VolumeDown) {
+        Ok(res) => info!(res, "submitted volume down request"),
+        Err(e) => error!("error submitting volume down request: {e}"),
     };
 }

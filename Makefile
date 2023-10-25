@@ -28,3 +28,9 @@ artist:
 
 stop:
 	curl -X POST -G "http://${CURL_TEST_HOST_PORT}/stop"
+
+volume_up:
+	curl -X POST -G "http://${CURL_TEST_HOST_PORT}/volume/up"
+
+volume_down:
+	curl -X POST -G "http://${CURL_TEST_HOST_PORT}/volume/down"
