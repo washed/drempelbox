@@ -23,7 +23,6 @@ use crate::player::{start_player_task, PlayerRequestMessage};
 
 pub mod tuple_windows;
 
-
 #[tokio::main()]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
