@@ -1,5 +1,7 @@
 use crate::file_player::FilePlayer;
 use crate::spotify_player::SpotifyPlayer;
+use itertools::Itertools;
+use percent_encoding::percent_decode_str;
 use tokio::sync::broadcast;
 use tokio::task::JoinSet;
 use tracing::{error, info};
@@ -26,7 +28,7 @@ pub async fn start_player_task(
                         stop(&file_player, &spotify_player).await;
                     }
                     PlayerRequestMessage::URL(url) => {
-                        let log_url = url.as_str();
+                        let log_url = url.to_string();
                         info!(log_url, "received URL player request");
 
                         match url.scheme() {
@@ -81,7 +83,9 @@ async fn play_file(file_player: &FilePlayer, spotify_player: &SpotifyPlayer, url
     };
     // TODO: We need to think about the format of this path a bit.
     //       Relative paths aren't really a thing in URLs.
-    let file_path = url.path().trim_matches('/').to_string();
+    let file_path = url.path().trim_matches('/');
+    let file_path = String::from_utf8(percent_decode_str(file_path).collect_vec()).expect("oof");
+
     match file_player.play(file_path, true).await {
         Ok(_) => {}
         Err(e) => error!(e, "Error playing file!"),
