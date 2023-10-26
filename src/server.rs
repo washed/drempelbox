@@ -51,12 +51,12 @@ async fn url(State(state): State<AppState>, spotify_query: Query<SpotifyQuery>) 
     let spotify_query: SpotifyQuery = spotify_query.0;
     let url = spotify_query.url;
 
-    info!(url, "Got spotify request");
+    info!(url, "Got URL request");
     let url = Url::parse(&url).expect("couldn't parse this");
 
     match state.sender.send(PlayerRequestMessage::URL(url)) {
-        Ok(res) => info!(res, "submitted spotify request"),
-        Err(e) => error!("error submitting spotify request: {e}"),
+        Ok(res) => info!(res, "submitted URL request"),
+        Err(e) => error!("error submitting URL request: {e}"),
     };
 }
 

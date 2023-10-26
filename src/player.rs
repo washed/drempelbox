@@ -1,8 +1,13 @@
+use std::sync::Arc;
+
 use crate::file_player::FilePlayer;
 use crate::spotify_player::SpotifyPlayer;
 use itertools::Itertools;
+use librespot::playback::config::VolumeCtrl;
+use librespot::playback::mixer;
+use librespot::playback::mixer::MixerConfig;
 use percent_encoding::percent_decode_str;
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, Mutex};
 use tokio::task::JoinSet;
 use tracing::{error, info};
 use url::Url;
@@ -18,9 +23,11 @@ pub enum PlayerRequestMessage {
 pub async fn start_player_task(
     join_set: &mut JoinSet<()>,
     mut receiver: broadcast::Receiver<PlayerRequestMessage>,
-    file_player: FilePlayer,
-    mut spotify_player: SpotifyPlayer,
-) {
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mixer: Arc<Mutex<Box<dyn mixer::Mixer>>> = get_mixer()?;
+    let mut spotify_player = SpotifyPlayer::new(mixer.clone()).await?;
+    let file_player = FilePlayer::new(mixer.clone()).await?;
+
     join_set.spawn(async move {
         loop {
             match receiver.recv().await {
@@ -49,25 +56,47 @@ pub async fn start_player_task(
                             &_ => info!(log_url, "not sure what to do with this url"),
                         }
                     }
+
                     PlayerRequestMessage::VolumeUp => {
-                        file_player.volume_up().await;
-                        match spotify_player.volume_up().await {
-                            Ok(()) => {}
-                            Err(e) => error!(e, "error changing spotify player volume!"),
-                        };
+                        set_volume_delta(&mixer, 0.01).await;
+                        file_player.volume_changed().await;
                     }
                     PlayerRequestMessage::VolumeDown => {
-                        file_player.volume_down().await;
-                        match spotify_player.volume_down().await {
-                            Ok(()) => {}
-                            Err(e) => error!(e, "error changing spotify player volume!"),
-                        };
+                        set_volume_delta(&mixer, -0.01).await;
+                        file_player.volume_changed().await;
                     }
                 },
                 Err(e) => error!("Error receiving sink message {e}"),
             }
         }
     });
+    Ok(())
+}
+
+async fn set_volume_delta(mixer: &Arc<Mutex<Box<dyn mixer::Mixer>>>, delta: f64) {
+    let mixer = mixer.lock().await;
+
+    // TODO: verify integer math here, make sure we don't explode
+    let current_volume = mixer.volume() as i32;
+    let volume_step = (VolumeCtrl::MAX_VOLUME as f64 * delta) as i32;
+    let requested_volume = current_volume + volume_step;
+    let requested_volume = requested_volume.clamp(0, u16::MAX as i32) as u16;
+    mixer.set_volume(requested_volume);
+    let new_volume = mixer.volume();
+    info!(
+        delta,
+        current_volume, requested_volume, new_volume, "player volume change request"
+    );
+}
+
+pub fn get_mixer() -> Result<Arc<Mutex<Box<dyn mixer::Mixer>>>, Box<dyn std::error::Error>> {
+    let mixer_config = MixerConfig::default();
+    let mixer = match mixer::find(Some("softvol")) {
+        Some(mixer) => mixer(mixer_config),
+        None => return Err(Box::<dyn std::error::Error>::from("Unable to find mixer!")),
+    };
+    let mixer = Arc::new(Mutex::new(mixer));
+    Ok(mixer)
 }
 
 async fn stop(file_player: &FilePlayer, spotify_player: &SpotifyPlayer) {

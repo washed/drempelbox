@@ -1,4 +1,5 @@
 use async_std::sync::Arc;
+use librespot::playback::mixer::{self, VolumeGetter};
 use rodio::{Decoder, OutputStream, Sink};
 use std::fs::File;
 use std::io::BufReader;
@@ -8,15 +9,25 @@ use tracing::info;
 pub struct FilePlayer {
     sink: Arc<Mutex<Sink>>,
     _stream: OutputStream,
+    volume_getter: Box<dyn VolumeGetter>,
 }
 
 impl FilePlayer {
-    pub async fn new() -> Result<FilePlayer, Box<dyn std::error::Error>> {
+    pub async fn new(
+        mixer: Arc<Mutex<Box<dyn mixer::Mixer>>>,
+    ) -> Result<FilePlayer, Box<dyn std::error::Error>> {
         let (_stream, stream_handle) = OutputStream::try_default()?;
         let sink = Sink::try_new(&stream_handle)?;
         let sink = Arc::new(Mutex::new(sink));
 
-        Ok(Self { sink, _stream })
+        let mixer = mixer.lock().await;
+        let volume_getter = mixer.get_soft_volume();
+
+        Ok(Self {
+            sink,
+            _stream,
+            volume_getter,
+        })
     }
 
     pub async fn play(
@@ -26,12 +37,13 @@ impl FilePlayer {
     ) -> Result<(), Box<dyn std::error::Error>> {
         info!(file_path, "attempting to open file");
 
-        let sink = self.sink.lock().await;
         let file = File::open(&file_path)?;
         let file = BufReader::new(file);
         let source = Decoder::new(file)?;
 
-        sink.set_volume(1.0);
+        self.volume_changed().await;
+
+        let sink = self.sink.lock().await;
         sink.play();
 
         if play_immediately == true && !sink.empty() {
@@ -51,26 +63,12 @@ impl FilePlayer {
         Ok(())
     }
 
-    pub async fn volume_up(&self) {
+    pub async fn volume_changed(&self) {
+        // TODO: we could use some observer pattern here instead
         let sink = self.sink.lock().await;
-        let current_volume = sink.volume();
-        let new_volume = current_volume + 0.01;
-        info!(
-            current_volume,
-            new_volume, "file player volume change request"
-        );
-        sink.set_volume(new_volume);
-    }
-
-    pub async fn volume_down(&self) {
-        let sink = self.sink.lock().await;
-        let current_volume = sink.volume();
-        let new_volume = current_volume - 0.01;
-        info!(
-            current_volume,
-            new_volume, "file player volume change request"
-        );
-        sink.set_volume(new_volume);
+        let attenuation_factor = self.volume_getter.attenuation_factor() as f32;
+        info!(attenuation_factor, "changing file player volume");
+        sink.set_volume(attenuation_factor);
     }
 }
 
