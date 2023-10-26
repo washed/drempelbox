@@ -52,7 +52,9 @@ async fn start_ntag_reader_task_impl(
                     let mut ntag = ntag_rx.lock().await;
                     match ntag.read() {
                         Ok(ndef) => {
-                            let url = match Url::parse(&ndef.uri) {
+                            // TODO: only the first record is used
+                            let url = &ndef.records[0].uri;
+                            let url = match Url::parse(url) {
                                 Ok(url) => url,
                                 Err(e) => {
                                     let e = e.to_string();

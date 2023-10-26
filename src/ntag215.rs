@@ -4,7 +4,7 @@ use mfrc522::{
     Initialized, Mfrc522, Uid,
 };
 
-use crate::ndef::NDEF;
+use crate::ndef::Message;
 
 pub struct NTAG215 {
     pub mfrc522: Mfrc522<SpiInterface<Spidev, DummyNSS, DummyDelay>, Initialized>,
@@ -97,12 +97,12 @@ impl NTAG215 {
         }
     }
 
-    pub fn read(&mut self) -> Result<NDEF, Box<dyn std::error::Error>> {
+    pub fn read(&mut self) -> Result<Message, Box<dyn std::error::Error>> {
         self.select()?;
         self.read_blocks();
 
-        let ndef = NDEF::parse(&self.memory);
-        Ok(ndef)
+        let message = Message::parse(&self.memory)?;
+        Ok(message)
     }
 
     fn read_blocks(&mut self) {
