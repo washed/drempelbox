@@ -1,13 +1,6 @@
 use bitflags::bitflags;
 use std::str;
 
-enum State {
-    None,
-    MessageInit,
-    RecordHeader,
-    RecordData,
-}
-
 bitflags! {
     pub struct Flags: u8 {
         const MESSAGE_BEGIN = 0b10000000;
@@ -69,102 +62,146 @@ pub enum WellKnownType {
     URI,
 }
 
-pub struct NDEF {
-    // pub records: Vec<WellKnownType>,
-    pub uri: String,
-    // pub uri_2: str,
+struct ByteGetter<'a> {
+    index: usize,
+    data: &'a [u8],
 }
 
-impl NDEF {
-    // TODO: This is a terrible ndef "parser" which is barely MVP ready!
+impl<'a> ByteGetter<'a> {
+    pub fn new(data: &'a [u8]) -> Self {
+        ByteGetter {
+            index: 0,
+            data: data,
+        }
+    }
 
+    pub fn get_byte(&mut self) -> u8 {
+        let res = self.data[self.index];
+        self.index += 1;
+        res
+    }
+
+    pub fn get_bytes(&mut self, byte_count: usize) -> &'a [u8] {
+        let res = &self.data[self.index..self.index + byte_count];
+        self.index += byte_count;
+        res
+    }
+
+    pub fn get_bytes_const<const N: usize>(&mut self) -> [u8; N] {
+        let res: [u8; N] = self.data[self.index..self.index + N].try_into().unwrap();
+        self.index += N;
+        res
+    }
+}
+
+pub struct MessageHeader {
+    pub init: u8,
+    pub len: u8,
+}
+
+pub struct RecordHeader<'a> {
+    pub flags_tnf: Flags,
+    pub type_length: usize,
+    pub payload_length: usize,
+    pub id_length: Option<u8>,
+    pub payload_type: Option<&'a [u8]>,
+    pub payload_id: Option<&'a [u8]>,
+}
+
+pub struct RecordRaw<'a> {
+    pub header: RecordHeader<'a>,
+    pub payload: &'a [u8],
+}
+
+// this needs to be traitified so we can build a message with several different records
+pub struct URIRecord {
+    pub uri: String, // maybe parse directly into Url type?
+}
+
+pub struct Message {
+    pub message_header: MessageHeader,
+    pub records: Vec<URIRecord>,
+}
+
+impl Message {
+    // TODO: This is a slightly less terrible ndef "parser" which is barely MVP ready!
     const MESSAGE_INIT_MARKER: u8 = 0x03;
 
-    pub fn parse(buffer: &[u8]) -> Self {
-        let mut state = State::None;
-        let mut message_len: u8 = 0;
-        let mut payload_length: u32 = 0;
-        let mut i: usize = 0;
+    pub fn parse(data: &[u8]) -> Result<Message, Box<dyn std::error::Error>> {
+        let mut bg = ByteGetter::new(data);
 
-        // let mut records = Vec::new();
-
-        let mut uri: String = String::new();
-
-        while i < buffer.len() {
-            match state {
-                State::None => {
-                    let byte = buffer[i];
-                    if byte == NDEF::MESSAGE_INIT_MARKER {
-                        state = State::MessageInit;
-                    }
-                    // else error?
-                    i += 1;
-                }
-                State::MessageInit => {
-                    message_len = buffer[i];
-                    state = State::RecordHeader;
-                    i += 1;
-                }
-                State::RecordHeader => {
-                    let flags_tnf =
-                        Flags::from_bits(buffer[i]).expect("Couldn't parse Flags and TNF byte :(");
-                    i += 1;
-
-                    let type_length = buffer[i] as usize;
-                    println!("type_length: {type_length}");
-                    i += 1;
-
-                    if flags_tnf.contains(Flags::SHORT_RECORD) {
-                        payload_length = u32::from(buffer[i]);
-                        i += 1;
-                    } else {
-                        payload_length =
-                            u32::from_be_bytes(buffer[i..i + 4].try_into().expect("oof"));
-                        i += 4;
-                    }
-                    println!("payload_length: {payload_length}");
-
-                    let mut id_length: usize = 0;
-                    if flags_tnf.contains(Flags::ID_LENGTH_PRESENT) {
-                        id_length = usize::from(buffer[i]);
-                        i += 1;
-                    }
-                    println!("id_length: {id_length}");
-
-                    // TODO: some of these need some length checks
-                    let mut payload_type = 0;
-                    if type_length > 0 {
-                        // payload_type =
-                        //     u32::from_be_bytes(buffer[i..i + type_length].try_into().expect("oof"));
-                        i += type_length;
-                    }
-
-                    let mut payload_id = 0;
-                    if flags_tnf.contains(Flags::ID_LENGTH_PRESENT) && id_length > 0 {
-                        payload_id =
-                            u32::from_be_bytes(buffer[i..i + id_length].try_into().expect("oof"));
-                        i += id_length;
-                    }
-
-                    // D1 01 4B 55
-                    state = State::RecordData;
-                }
-                State::RecordData => {
-                    let prefix_byte = buffer.get(i).expect("boing");
-                    let data = buffer
-                        .get(i + 1..(i + payload_length as usize))
-                        .expect("oh no");
-
-                    uri = PREFIX_STRINGS[usize::from(*prefix_byte)].to_owned();
-                    uri.push_str(String::from_utf8(Vec::from(data)).expect("crap").as_str());
-
-                    println!("uri: {uri}");
-                    break;
-                }
-            }
+        // parse message header
+        let message_init = bg.get_byte();
+        if message_init != Self::MESSAGE_INIT_MARKER {
+            return Err(Box::<dyn std::error::Error>::from(
+                "NDEF Message init marker not found!",
+            ));
         }
 
-        Self { uri }
+        let message_len = bg.get_byte();
+
+        let message_header = MessageHeader {
+            init: message_init,
+            len: message_len,
+        };
+
+        // parse record header
+        let flags_tnf = Flags::from_bits(bg.get_byte()).ok_or(
+            Box::<dyn std::error::Error>::from("couldn't parse flags byte of ndef message"),
+        )?;
+        let type_length = bg.get_byte() as usize;
+
+        let payload_length = match flags_tnf.contains(Flags::SHORT_RECORD) {
+            true => u32::from(bg.get_byte()),
+            false => u32::from_be_bytes(bg.get_bytes_const::<4>()),
+        } as usize;
+
+        let id_length = match flags_tnf.contains(Flags::ID_LENGTH_PRESENT) {
+            true => Some(bg.get_byte()),
+            false => None,
+        };
+
+        let payload_type = match type_length > 0 {
+            true => {
+                let payload_type = bg.get_bytes(type_length);
+                Some(payload_type)
+            }
+            false => None,
+        };
+
+        let payload_id = match flags_tnf.contains(Flags::ID_LENGTH_PRESENT) && id_length > Some(0) {
+            true => Some(bg.get_bytes(id_length.unwrap() as usize)),
+            false => None,
+        };
+
+        let record_header = RecordHeader {
+            flags_tnf,
+            type_length,
+            payload_length,
+            id_length,
+            payload_type,
+            payload_id,
+        };
+
+        let payload = bg.get_bytes(payload_length);
+        let record_raw = RecordRaw {
+            header: record_header,
+            payload,
+        };
+
+        // TODO: this is just parsing URI records right now!
+        let prefix = PREFIX_STRINGS[usize::from(record_raw.payload[0])];
+        let payload = str::from_utf8(&record_raw.payload[1..])?;
+        let uri = [prefix, payload].join("");
+        let uri_record = URIRecord { uri };
+
+        // build records vector
+        let records = Vec::from([uri_record]);
+
+        Ok(Self {
+            message_header,
+            records,
+        })
     }
 }
 
@@ -190,8 +227,8 @@ mod tests {
         const URI_DECODED: &str =
             "https://open.spotify.com/playlist/62Q9JugytREDtl4i4fcHfX?si=PW2kLwTGQ66_NUEFJD6WYg";
 
-        let ndef = crate::ndef::NDEF::parse(&NDEF_MESSAGE);
+        let message = crate::ndef::Message::parse(&NDEF_MESSAGE).unwrap();
 
-        assert_eq!(ndef.uri, URI_DECODED);
+        assert_eq!(message.records[0].uri, URI_DECODED);
     }
 }
