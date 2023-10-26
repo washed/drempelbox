@@ -6,11 +6,8 @@ use tracing_subscriber;
 pub mod ndef;
 pub mod ntag215;
 
-pub mod spotify_player;
-use crate::spotify_player::SpotifyPlayer;
-
 pub mod file_player;
-use crate::file_player::FilePlayer;
+pub mod spotify_player;
 
 pub mod server;
 use crate::server::{start_server_task, AppState};
@@ -27,15 +24,12 @@ pub mod tuple_windows;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
-    let spotify_player = SpotifyPlayer::new().await?;
-    let file_player = FilePlayer::new().await?;
-
     let (sender, receiver) = broadcast::channel::<PlayerRequestMessage>(16);
     let app_state = AppState { sender };
 
     let mut join_set = JoinSet::<()>::new();
 
-    start_player_task(&mut join_set, receiver, file_player, spotify_player).await;
+    start_player_task(&mut join_set, receiver).await?;
     start_ntag_reader_task(&mut join_set, app_state.clone()).await;
     start_server_task(&mut join_set, app_state.clone()).await;
 

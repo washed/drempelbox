@@ -9,9 +9,8 @@ use librespot::{
     metadata::{Album, Artist, Playlist},
     playback::{
         audio_backend,
-        config::{AudioFormat, PlayerConfig, VolumeCtrl},
+        config::{AudioFormat, PlayerConfig},
         mixer,
-        mixer::MixerConfig,
         player::{Player, PlayerEvent},
     },
 };
@@ -28,8 +27,6 @@ use url::Url;
 pub enum SpotifyPlayerCommand {
     PlayTracks(Vec<SpotifyId>),
     Stop,
-    VolumeUp,
-    VolumeDown,
 }
 
 pub struct SpotifyPlayer {
@@ -38,23 +35,25 @@ pub struct SpotifyPlayer {
 }
 
 impl SpotifyPlayer {
-    pub async fn new() -> Result<SpotifyPlayer, Box<dyn std::error::Error>> {
+    pub async fn new(
+        mixer: Arc<Mutex<Box<dyn mixer::Mixer>>>,
+    ) -> Result<SpotifyPlayer, Box<dyn std::error::Error>> {
         let (player_tx, player_rx) = unbounded_channel::<SpotifyPlayerCommand>();
 
-        let (session, player, player_event_receiver, mixer) = match SpotifyPlayer::connect().await {
-            Ok(res) => res,
-            Err(e) => {
-                error!(e, "Could not connect to spotify!");
-                return Err(e);
-            }
-        };
+        let (session, player, player_event_receiver) =
+            match SpotifyPlayer::connect(mixer.clone()).await {
+                Ok(res) => res,
+                Err(e) => {
+                    error!(e, "Could not connect to spotify!");
+                    return Err(e);
+                }
+            };
 
         let session = Arc::new(Mutex::new(session));
         let player = Arc::new(Mutex::new(player));
-        let mixer = Arc::new(Mutex::new(mixer));
 
         // TODO: consider keeping this around to enable us to check up on it
-        let _task = SpotifyPlayer::run(player, player_rx, player_event_receiver, mixer);
+        let _task = SpotifyPlayer::run(player, player_rx, player_event_receiver);
 
         let inst = Self { session, player_tx };
 
@@ -65,7 +64,6 @@ impl SpotifyPlayer {
         player: Arc<Mutex<Player>>,
         mut player_rx: UnboundedReceiver<SpotifyPlayerCommand>,
         mut player_event_receiver: UnboundedReceiver<PlayerEvent>,
-        mixer: Arc<Mutex<Box<dyn mixer::Mixer>>>,
     ) -> JoinHandle<()> {
         tokio::spawn(async move {
             let mut tracks: VecDeque<SpotifyId> = VecDeque::new();
@@ -89,28 +87,6 @@ impl SpotifyPlayer {
                                 info!("stopping spotify");
                                 tracks.clear();
                                 player.stop();
-                            }
-                            SpotifyPlayerCommand::VolumeDown => {
-                                let mixer = mixer.lock().await;
-                                let current_volume = mixer.volume();
-                                let volume_step = (VolumeCtrl::MAX_VOLUME as f64 / 100.0) as u16;
-                                let new_volume = current_volume - volume_step;
-                                info!(
-                                    current_volume,
-                                    new_volume, "spotify player volume change request"
-                                );
-                                mixer.set_volume(new_volume);
-                            }
-                            SpotifyPlayerCommand::VolumeUp => {
-                                let mixer = mixer.lock().await;
-                                let current_volume = mixer.volume();
-                                let volume_step = (VolumeCtrl::MAX_VOLUME as f64 / 100.0) as u16;
-                                let new_volume = current_volume + volume_step;
-                                info!(
-                                    current_volume,
-                                    new_volume, "spotify player volume change request"
-                                );
-                                mixer.set_volume(new_volume);
                             }
                         }
                     }
@@ -157,23 +133,12 @@ impl SpotifyPlayer {
         })
     }
 
-    async fn connect() -> Result<
-        (
-            Session,
-            Player,
-            UnboundedReceiver<PlayerEvent>,
-            Box<dyn mixer::Mixer>,
-        ),
-        Box<dyn std::error::Error>,
-    > {
+    async fn connect(
+        mixer: Arc<Mutex<Box<dyn mixer::Mixer>>>,
+    ) -> Result<(Session, Player, UnboundedReceiver<PlayerEvent>), Box<dyn std::error::Error>> {
         let session_config = SessionConfig::default();
         let player_config = PlayerConfig::default();
         let audio_format = AudioFormat::default();
-        let mixer_config = MixerConfig::default();
-        let mixer = match mixer::find(Some("softvol")) {
-            Some(mixer) => mixer(mixer_config),
-            None => return Err(Box::<dyn std::error::Error>::from("Unable to find mixer!")),
-        };
 
         let spotify_username: String = env::var("SPOTIFY_USERNAME")?.parse()?;
         let spotify_password: String = env::var("SPOTIFY_PASSWORD")?.parse()?;
@@ -185,13 +150,14 @@ impl SpotifyPlayer {
         let (session, _credentials) =
             Session::connect(session_config, credentials, None, false).await?;
 
+        let mixer = mixer.lock().await;
         let (player, receiver) = Player::new(
             player_config,
             session.clone(),
             mixer.get_soft_volume(),
             move || backend(None, audio_format),
         );
-        Ok((session, player, receiver, mixer))
+        Ok((session, player, receiver))
     }
 
     pub async fn play_from_url(&mut self, url: Url) -> Result<(), Box<dyn std::error::Error>> {
@@ -227,16 +193,6 @@ impl SpotifyPlayer {
 
     pub async fn stop(&self) -> Result<(), Box<dyn std::error::Error>> {
         self.player_tx.send(SpotifyPlayerCommand::Stop)?;
-        Ok(())
-    }
-
-    pub async fn volume_up(&self) -> Result<(), Box<dyn std::error::Error>> {
-        self.player_tx.send(SpotifyPlayerCommand::VolumeUp)?;
-        Ok(())
-    }
-
-    pub async fn volume_down(&self) -> Result<(), Box<dyn std::error::Error>> {
-        self.player_tx.send(SpotifyPlayerCommand::VolumeDown)?;
         Ok(())
     }
 
