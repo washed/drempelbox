@@ -1,5 +1,6 @@
 use bitflags::bitflags;
 use std::str;
+use tracing::debug;
 
 bitflags! {
     pub struct Flags: u8 {
@@ -77,12 +78,14 @@ impl<'a> ByteGetter<'a> {
 
     pub fn get_byte(&mut self) -> u8 {
         let res = self.data[self.index];
+        debug!("got byte {:02x?}", res);
         self.index += 1;
         res
     }
 
     pub fn get_bytes(&mut self, byte_count: usize) -> &'a [u8] {
         let res = &self.data[self.index..self.index + byte_count];
+        debug!("got bytes {:02x?}", res);
         self.index += byte_count;
         res
     }
@@ -132,6 +135,7 @@ impl Message {
 
         // parse message header
         let message_init = bg.get_byte();
+        debug!(message_init);
         if message_init != Self::MESSAGE_INIT_MARKER {
             return Err(Box::<dyn std::error::Error>::from(
                 "NDEF Message init marker not found!",
@@ -139,6 +143,7 @@ impl Message {
         }
 
         let message_len = bg.get_byte();
+        debug!(message_len);
 
         let message_header = MessageHeader {
             init: message_init,
