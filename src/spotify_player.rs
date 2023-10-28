@@ -1,6 +1,8 @@
+use futures::StreamExt;
 use librespot::{
     core::{
         authentication::Credentials,
+        cache::Cache,
         config::SessionConfig,
         session::Session,
         spotify_id::{SpotifyAudioType, SpotifyId},
@@ -14,8 +16,10 @@ use librespot::{
         player::{Player, PlayerEvent},
     },
 };
+use librespot_discovery::DeviceType;
+use sha1::{Digest, Sha1};
+use std::collections::VecDeque;
 use std::sync::Arc;
-use std::{collections::VecDeque, env};
 use tokio::sync::mpsc::{
     error::TryRecvError, unbounded_channel, UnboundedReceiver, UnboundedSender,
 };
@@ -58,6 +62,23 @@ impl SpotifyPlayer {
         let inst = Self { session, player_tx };
 
         Ok(inst)
+    }
+
+    async fn discovery() -> Option<Credentials> {
+        info!("use authenticated spotify client to allow Drempelbox access");
+        let name = "Drempelspot";
+        let device_id = hex::encode(Sha1::digest(name.as_bytes()));
+
+        let mut server = librespot_discovery::Discovery::builder(device_id)
+            .name(name)
+            .device_type(DeviceType::Computer)
+            .launch()
+            .unwrap();
+
+        while let Some(x) = server.next().await {
+            return Some(x);
+        }
+        None
     }
 
     fn run(
@@ -140,16 +161,29 @@ impl SpotifyPlayer {
         let player_config = PlayerConfig::default();
         let audio_format = AudioFormat::default();
 
-        let spotify_username: String = env::var("SPOTIFY_USERNAME")?.parse()?;
-        let spotify_password: String = env::var("SPOTIFY_PASSWORD")?.parse()?;
-        let credentials = Credentials::with_password(&spotify_username, &spotify_password);
+        let cache = Cache::new(
+            Some(".drempelcache/credentials"),
+            Some(".drempelcache/volume"),
+            Some(".drempelcache/audio"),
+            Some(1024 * 1024 * 1024),
+        )?;
+
+        let credentials = match cache.credentials() {
+            Some(credentials) => {
+                info!("using cached credentials");
+                credentials
+            }
+            None => {
+                info!("await auth via spotify connect");
+                SpotifyPlayer::discovery().await.unwrap()
+            }
+        };
+
+        let (session, _credentials) =
+            Session::connect(session_config, credentials, Some(cache), true).await?;
 
         let backend: fn(Option<String>, AudioFormat) -> Box<dyn audio_backend::Sink> =
             audio_backend::find(None).unwrap();
-
-        let (session, _credentials) =
-            Session::connect(session_config, credentials, None, false).await?;
-
         let mixer = mixer.lock().await;
         let (player, receiver) = Player::new(
             player_config,
