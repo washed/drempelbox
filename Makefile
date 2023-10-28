@@ -1,4 +1,4 @@
-.PHONY: build build-aarch64-unknown-linux-gnu build-x86_64-unknown-linux-gnu copy file track album playlist artist stop
+.PHONY: build build-aarch64-unknown-linux-gnu build-x86_64-unknown-linux-gnu copy service file track album playlist artist stop
 
 build: build-aarch64-unknown-linux-gnu build-x86_64-unknown-linux-gnu
 
@@ -9,7 +9,16 @@ build-x86_64-unknown-linux-gnu:
 	cross build --release --target=x86_64-unknown-linux-gnu
 
 copy:
-	scp target/aarch64-unknown-linux-gnu/release/drempelbox ${RPI_HOST}:${RPI_APP_PATH}/drempelbox
+	scp service/drempelbox.service ${RPI_HOST}:${RPI_TEMP_PATH}/drempelbox.service
+	scp target/aarch64-unknown-linux-gnu/release/drempelbox ${RPI_HOST}:${RPI_TEMP_PATH}/drempelbox
+
+	ssh ${RPI_HOST} sudo mv ${RPI_TEMP_PATH}/drempelbox /usr/bin/drempelbox
+	ssh ${RPI_HOST} sudo mv ${RPI_TEMP_PATH}/drempelbox.service /etc/systemd/system/drempelbox.service
+
+	ssh ${RPI_HOST} sudo systemctl restart drempelbox
+
+service:
+	ssh ${RPI_HOST} sudo systemctl enable drempelbox
 
 file:
 	curl -X POST -G "http://${CURL_TEST_HOST_PORT}/url" --data-urlencode 'url=file://./audio/police_s.wav'
