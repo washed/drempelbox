@@ -9,7 +9,7 @@ build-x86_64-unknown-linux-gnu:
 	cross build --release --target=x86_64-unknown-linux-gnu
 
 copy:
-	scp docker_build/linux_arm64/drempelbox ${RPI_HOST}:${RPI_APP_PATH}/drempelbox
+	scp target/aarch64-unknown-linux-gnu/release/drempelbox ${RPI_HOST}:${RPI_APP_PATH}/drempelbox
 
 file:
 	curl -X POST -G "http://${CURL_TEST_HOST_PORT}/url" --data-urlencode 'url=file://./audio/police_s.wav'
