@@ -235,15 +235,17 @@ impl Message {
     ) -> Result<Vec<Record>, Box<dyn std::error::Error>> {
         let mut records = Vec::<Record>::new();
 
+        // loop {
         let record_raw = Message::parse_record_raw(bg)?;
+        // let last_record = record_raw.header.flags_tnf.contains(Flags::MESSAGE_END);
 
         // TODO: this is just parsing URI records right now!
         let uri_record = Message::parse_uri_record(record_raw)?;
-
         records.push(uri_record);
 
-        // if record_raw.header.flags_tnf.contains(Flags::MESSAGE_END) {
-        //     break;
+        //     if last_record {
+        //         break;
+        //     }
         // }
 
         Ok(records)
