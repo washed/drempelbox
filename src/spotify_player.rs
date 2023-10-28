@@ -161,6 +161,11 @@ impl SpotifyPlayer {
         let player_config = PlayerConfig::default();
         let audio_format = AudioFormat::default();
 
+        // we shouldn't need the default here, as systemd should export CACHE_DIRECTORY,
+        // but for some reason it is not seen by our process
+        let cache_directory =
+            env::var("CACHE_DIRECTORY").unwrap_or(String::from("/var/cache/drempelbox"));
+
         let cache = Cache::new(
             Some(".drempelcache/credentials"),
             Some(".drempelcache/volume"),
