@@ -18,8 +18,8 @@ use librespot::{
 };
 use librespot_discovery::DeviceType;
 use sha1::{Digest, Sha1};
-use std::collections::VecDeque;
 use std::sync::Arc;
+use std::{collections::VecDeque, env};
 use tokio::sync::mpsc::{
     error::TryRecvError, unbounded_channel, UnboundedReceiver, UnboundedSender,
 };
@@ -167,9 +167,9 @@ impl SpotifyPlayer {
             env::var("CACHE_DIRECTORY").unwrap_or(String::from("/var/cache/drempelbox"));
 
         let cache = Cache::new(
-            Some(".drempelcache/credentials"),
-            Some(".drempelcache/volume"),
-            Some(".drempelcache/audio"),
+            Some(cache_directory.clone() + "/credentials"),
+            Some(cache_directory.clone() + "/volume"),
+            Some(cache_directory.clone() + "/audio"),
             Some(1024 * 1024 * 1024),
         )?;
 
