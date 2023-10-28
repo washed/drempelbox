@@ -32,7 +32,9 @@ async fn start_server(app_state: AppState) -> Result<(), Box<dyn std::error::Err
         .route("/volume/down", post(volume_down))
         .with_state(app_state);
 
-    let bind_address: std::net::SocketAddr = env::var("BIND_ADDRESS")?.parse()?;
+    let bind_address: std::net::SocketAddr = env::var("BIND_ADDRESS")
+        .unwrap_or(String::from("0.0.0.0:3000"))
+        .parse()?;
 
     axum::Server::bind(&bind_address)
         .serve(app.into_make_service())
