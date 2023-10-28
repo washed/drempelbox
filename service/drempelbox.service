@@ -8,6 +8,7 @@ Restart=always
 RestartSec=1
 User=marcf
 ExecStart=/usr/bin/drempelbox
+CacheDirectory=drempelbox
 
 [Install]
 WantedBy=multi-user.target
