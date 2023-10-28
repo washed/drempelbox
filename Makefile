@@ -14,6 +14,9 @@ copy:
 file:
 	curl -X POST -G "http://${CURL_TEST_HOST_PORT}/url" --data-urlencode 'url=file://./audio/police_s.wav'
 
+file2:
+	curl -X POST -G "http://${CURL_TEST_HOST_PORT}/url" --data-urlencode 'url=file://./audio/Duel of the Fates.mp3'
+
 track:
 	curl -X POST -G "http://${CURL_TEST_HOST_PORT}/url" --data-urlencode 'url=https://open.spotify.com/track/4abJbqX8C8CQTXHZxEbJZz?si=f04b62b8e85c4bf1'
 
