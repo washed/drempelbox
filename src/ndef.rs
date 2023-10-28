@@ -65,6 +65,7 @@ pub enum WellKnownType {
 
 struct ByteGetter<'a> {
     index: usize,
+    len: Option<usize>,
     data: &'a [u8],
 }
 
@@ -72,28 +73,49 @@ impl<'a> ByteGetter<'a> {
     pub fn new(data: &'a [u8]) -> Self {
         ByteGetter {
             index: 0,
+            len: None,
             data: data,
         }
     }
 
-    pub fn get_byte(&mut self) -> u8 {
+    fn check_index(&self) -> Result<(), Box<dyn std::error::Error>> {
+        match self.len.unwrap_or(usize::MAX) > self.index {
+            true => Ok(()),
+            false => Err(Box::<dyn std::error::Error>::from(
+                "Trying to overread buffer!",
+            )),
+        }
+    }
+
+    pub fn get_byte(&mut self) -> Result<u8, Box<dyn std::error::Error>> {
+        self.check_index()?;
+
         let res = self.data[self.index];
         debug!("got byte {:02x?}", res);
         self.index += 1;
-        res
+        Ok(res)
     }
 
-    pub fn get_bytes(&mut self, byte_count: usize) -> &'a [u8] {
+    pub fn get_bytes(&mut self, byte_count: usize) -> Result<&'a [u8], Box<dyn std::error::Error>> {
+        self.check_index()?;
+
         let res = &self.data[self.index..self.index + byte_count];
         debug!("got bytes {:02x?}", res);
         self.index += byte_count;
-        res
+        Ok(res)
     }
 
-    pub fn get_bytes_const<const N: usize>(&mut self) -> [u8; N] {
+    pub fn get_bytes_const<const N: usize>(
+        &mut self,
+    ) -> Result<[u8; N], Box<dyn std::error::Error>> {
+        self.check_index()?;
         let res: [u8; N] = self.data[self.index..self.index + N].try_into().unwrap();
         self.index += N;
-        res
+        Ok(res)
+    }
+
+    pub fn set_len(&mut self, len: usize) {
+        self.len = Some(len);
     }
 }
 
@@ -116,25 +138,23 @@ pub struct RecordRaw<'a> {
     pub payload: &'a [u8],
 }
 
-// this needs to be traitified so we can build a message with several different records
-pub struct URIRecord {
-    pub uri: String, // maybe parse directly into Url type?
+pub enum Record {
+    URI { uri: String },
 }
 
 pub struct Message {
     pub message_header: MessageHeader,
-    pub records: Vec<URIRecord>,
+    pub records: Vec<Record>,
 }
 
 impl Message {
     // TODO: This is a slightly less terrible ndef "parser" which is barely MVP ready!
     const MESSAGE_INIT_MARKER: u8 = 0x03;
 
-    pub fn parse(data: &[u8]) -> Result<Message, Box<dyn std::error::Error>> {
-        let mut bg = ByteGetter::new(data);
-
-        // parse message header
-        let message_init = bg.get_byte();
+    fn parse_message_header(
+        bg: &mut ByteGetter,
+    ) -> Result<MessageHeader, Box<dyn std::error::Error>> {
+        let message_init = bg.get_byte()?;
         debug!(message_init);
         if message_init != Self::MESSAGE_INIT_MARKER {
             return Err(Box::<dyn std::error::Error>::from(
@@ -142,44 +162,50 @@ impl Message {
             ));
         }
 
-        let message_len = bg.get_byte();
+        let message_len = bg.get_byte()?;
         debug!(message_len);
+        bg.set_len(message_len as usize);
 
         let message_header = MessageHeader {
             init: message_init,
             len: message_len,
         };
 
-        // parse record header
-        let flags_tnf = Flags::from_bits(bg.get_byte()).ok_or(
+        Ok(message_header)
+    }
+
+    fn parse_record_raw<'a>(
+        bg: &'a mut ByteGetter<'a>,
+    ) -> Result<RecordRaw<'a>, Box<dyn std::error::Error>> {
+        let flags_tnf = Flags::from_bits(bg.get_byte()?).ok_or(
             Box::<dyn std::error::Error>::from("couldn't parse flags byte of ndef message"),
         )?;
-        let type_length = bg.get_byte() as usize;
+        let type_length = bg.get_byte()? as usize;
 
         let payload_length = match flags_tnf.contains(Flags::SHORT_RECORD) {
-            true => u32::from(bg.get_byte()),
-            false => u32::from_be_bytes(bg.get_bytes_const::<4>()),
+            true => u32::from(bg.get_byte()?),
+            false => u32::from_be_bytes(bg.get_bytes_const::<4>()?),
         } as usize;
 
         let id_length = match flags_tnf.contains(Flags::ID_LENGTH_PRESENT) {
-            true => Some(bg.get_byte()),
+            true => Some(bg.get_byte()?),
             false => None,
         };
 
         let payload_type = match type_length > 0 {
             true => {
-                let payload_type = bg.get_bytes(type_length);
+                let payload_type = bg.get_bytes(type_length)?;
                 Some(payload_type)
             }
             false => None,
         };
 
         let payload_id = match flags_tnf.contains(Flags::ID_LENGTH_PRESENT) && id_length > Some(0) {
-            true => Some(bg.get_bytes(id_length.unwrap() as usize)),
+            true => Some(bg.get_bytes(id_length.unwrap() as usize)?),
             false => None,
         };
 
-        let record_header = RecordHeader {
+        let header = RecordHeader {
             flags_tnf,
             type_length,
             payload_length,
@@ -188,20 +214,46 @@ impl Message {
             payload_id,
         };
 
-        let payload = bg.get_bytes(payload_length);
+        let payload = bg.get_bytes(header.payload_length)?;
+
         let record_raw = RecordRaw {
-            header: record_header,
+            header: header,
             payload,
         };
+        Ok(record_raw)
+    }
 
-        // TODO: this is just parsing URI records right now!
+    fn parse_uri_record(record_raw: RecordRaw) -> Result<Record, Box<dyn std::error::Error>> {
         let prefix = PREFIX_STRINGS[usize::from(record_raw.payload[0])];
         let payload = str::from_utf8(&record_raw.payload[1..])?;
         let uri = [prefix, payload].join("");
-        let uri_record = URIRecord { uri };
+        Ok(Record::URI { uri })
+    }
 
-        // build records vector
-        let records = Vec::from([uri_record]);
+    fn parse_records<'a>(
+        bg: &'a mut ByteGetter<'a>,
+    ) -> Result<Vec<Record>, Box<dyn std::error::Error>> {
+        let mut records = Vec::<Record>::new();
+
+        let record_raw = Message::parse_record_raw(bg)?;
+
+        // TODO: this is just parsing URI records right now!
+        let uri_record = Message::parse_uri_record(record_raw)?;
+
+        records.push(uri_record);
+
+        // if record_raw.header.flags_tnf.contains(Flags::MESSAGE_END) {
+        //     break;
+        // }
+
+        Ok(records)
+    }
+
+    pub fn parse(data: &[u8]) -> Result<Message, Box<dyn std::error::Error>> {
+        let mut bg = ByteGetter::new(data);
+
+        let message_header = Message::parse_message_header(&mut bg)?;
+        let records = Message::parse_records(&mut bg)?;
 
         Ok(Self {
             message_header,
@@ -212,6 +264,8 @@ impl Message {
 
 #[cfg(test)]
 mod tests {
+    use crate::ndef::*;
+
     #[test]
     fn parse_uri() {
         const NDEF_MESSAGE: [u8; 82] = [
@@ -232,8 +286,12 @@ mod tests {
         const URI_DECODED: &str =
             "https://open.spotify.com/playlist/62Q9JugytREDtl4i4fcHfX?si=PW2kLwTGQ66_NUEFJD6WYg";
 
-        let message = crate::ndef::Message::parse(&NDEF_MESSAGE).unwrap();
+        let message = Message::parse(&NDEF_MESSAGE).unwrap();
 
-        assert_eq!(message.records[0].uri, URI_DECODED);
+        match &message.records[0] {
+            Record::URI { uri } => {
+                assert_eq!(uri, URI_DECODED);
+            }
+        }
     }
 }

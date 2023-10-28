@@ -1,3 +1,4 @@
+use crate::ndef::Record;
 use crate::ntag215::NTAG215;
 use crate::player::PlayerRequestMessage;
 use crate::server::AppState;
@@ -53,8 +54,8 @@ async fn start_ntag_reader_task_impl(
                     match ntag.read() {
                         Ok(ndef) => {
                             // TODO: only the first record is used
-                            let url = &ndef.records[0].uri;
-                            let url = match Url::parse(url) {
+                            let Record::URI { uri } = &ndef.records[0];
+                            let url = match Url::parse(&uri) {
                                 Ok(url) => url,
                                 Err(e) => {
                                     let e = e.to_string();
