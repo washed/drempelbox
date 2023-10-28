@@ -98,7 +98,8 @@ impl NTAG215 {
         self.select()?;
         self.read_blocks();
 
-        let message = Message::parse(&self.memory)?;
+        let user_memory = &self.memory[NTAG215::USER_MEMORY_START..NTAG215::USER_MEMORY_END];
+        let message = Message::parse(user_memory)?;
         Ok(message)
     }
 
