@@ -20,9 +20,7 @@ use librespot_discovery::DeviceType;
 use sha1::{Digest, Sha1};
 use std::sync::Arc;
 use std::{collections::VecDeque, env};
-use tokio::sync::mpsc::{
-    error::TryRecvError, unbounded_channel, UnboundedReceiver, UnboundedSender,
-};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tracing::{error, info};
