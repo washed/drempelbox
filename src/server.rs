@@ -1,7 +1,9 @@
-use axum::{debug_handler, extract::Query, extract::State, routing::post, Router};
-use serde::Deserialize;
+use axum::http::StatusCode;
+use axum::response::IntoResponse;
+use axum::{debug_handler, extract::Query, extract::State, routing::post, Json, Router};
+use serde::{Deserialize, Serialize};
 use std::env;
-use tokio::sync::broadcast;
+use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinSet;
 use tracing::{error, info};
 use url::Url;
@@ -10,7 +12,7 @@ use crate::player::PlayerRequestMessage;
 
 #[derive(Clone)]
 pub struct AppState {
-    pub sender: broadcast::Sender<PlayerRequestMessage>,
+    pub sender: mpsc::Sender<PlayerRequestMessage>,
 }
 
 pub async fn start_server_task(join_set: &mut JoinSet<()>, app_state: AppState) {
@@ -56,8 +58,8 @@ async fn url(State(state): State<AppState>, spotify_query: Query<SpotifyQuery>) 
     info!(url, "Got URL request");
     let url = Url::parse(&url).expect("couldn't parse this");
 
-    match state.sender.send(PlayerRequestMessage::URL(url)) {
-        Ok(res) => info!(res, "submitted URL request"),
+    match state.sender.send(PlayerRequestMessage::URL(url)).await {
+        Ok(_) => info!("submitted URL request"),
         Err(e) => error!("error submitting URL request: {e}"),
     };
 }
@@ -66,28 +68,69 @@ async fn url(State(state): State<AppState>, spotify_query: Query<SpotifyQuery>) 
 async fn stop(State(state): State<AppState>) {
     info!("Got stop request");
 
-    match state.sender.send(PlayerRequestMessage::Stop) {
-        Ok(res) => info!(res, "submitted stop request"),
+    match state.sender.send(PlayerRequestMessage::Stop).await {
+        Ok(_) => info!("submitted stop request"),
         Err(e) => error!("error submitting stop request: {e}"),
     };
 }
 
-#[debug_handler]
-async fn volume_up(State(state): State<AppState>) {
-    info!("Got volume up request");
-
-    match state.sender.send(PlayerRequestMessage::VolumeUp) {
-        Ok(res) => info!(res, "submitted volume up request"),
-        Err(e) => error!("error submitting volume up request: {e}"),
-    };
+#[derive(Serialize)]
+struct Volume {
+    volume: f64,
 }
 
 #[debug_handler]
-async fn volume_down(State(state): State<AppState>) {
+async fn volume_up(State(state): State<AppState>) -> impl IntoResponse {
+    info!("Got volume up request");
+
+    let (sender, receiver) = oneshot::channel::<f64>();
+
+    match state
+        .sender
+        .send(PlayerRequestMessage::VolumeUp { responder: sender })
+        .await
+    {
+        Ok(_) => info!("submitted volume up request"),
+        Err(e) => error!("error submitting volume up request: {e}"),
+    };
+
+    match receiver.await {
+        Ok(response) => (StatusCode::OK, Json(Volume { volume: response })).into_response(),
+        Err(_) => {
+            error!("didn't receive player command response");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json("error receiving player command response"),
+            )
+                .into_response()
+        }
+    }
+}
+
+#[debug_handler]
+async fn volume_down(State(state): State<AppState>) -> impl IntoResponse {
     info!("Got volume down request");
 
-    match state.sender.send(PlayerRequestMessage::VolumeDown) {
-        Ok(res) => info!(res, "submitted volume down request"),
-        Err(e) => error!("error submitting volume down request: {e}"),
+    let (sender, receiver) = oneshot::channel::<f64>();
+
+    match state
+        .sender
+        .send(PlayerRequestMessage::VolumeDown { responder: sender })
+        .await
+    {
+        Ok(_) => info!("submitted volume up request"),
+        Err(e) => error!("error submitting volume up request: {e}"),
     };
+
+    match receiver.await {
+        Ok(response) => (StatusCode::OK, Json(Volume { volume: response })).into_response(),
+        Err(_) => {
+            error!("didn't receive player command response");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json("error receiving player command response"),
+            )
+                .into_response()
+        }
+    }
 }

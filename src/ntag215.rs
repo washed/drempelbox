@@ -74,33 +74,36 @@ impl NTAG215 {
         }
     }
 
-    pub fn select(&mut self) -> Result<Uid, Box<dyn std::error::Error>> {
-        let atqa = self.mfrc522.reqa();
+    pub fn select(&mut self) -> Option<Uid> {
+        let atqa = self.mfrc522.reqa().ok();
         let atqa = match atqa {
-            Ok(atqa) => atqa,
-            Err(_) => {
-                self.mfrc522.hlta()?;
-                self.mfrc522.wupa()?
+            Some(atqa) => Some(atqa),
+            None => {
+                self.mfrc522.hlta().ok();
+                self.mfrc522.wupa().ok()
             }
         };
 
-        Ok(self.mfrc522.select(&atqa)?)
-    }
-
-    pub fn is_token_present(&mut self) -> Option<Uid> {
-        match self.select() {
-            Ok(res) => Some(res),
-            Err(_) => None,
+        match atqa {
+            Some(atqa) => match self.mfrc522.select(&atqa) {
+                Ok(atqa) => Some(atqa),
+                Err(_) => None,
+            },
+            None => None,
         }
     }
 
-    pub fn read(&mut self) -> Result<Message, Box<dyn std::error::Error>> {
+    pub fn is_token_present(&mut self) -> Option<Uid> {
+        self.select()
+    }
+
+    pub fn read(&mut self) -> Option<Message> {
         self.select()?;
         self.read_blocks();
 
         let user_memory = &self.memory[NTAG215::USER_MEMORY_START..NTAG215::USER_MEMORY_END];
         let message = Message::parse(user_memory)?;
-        Ok(message)
+        Some(message)
     }
 
     fn read_blocks(&mut self) {
