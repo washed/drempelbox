@@ -1,14 +1,17 @@
 [Unit]
 Description=drempelbox
-After=sound.target
+Requires=sound.target user@1000.service sys-devices-platform-soc-3f980000.usb-usb1-1\x2d1-1\x2d1:1.0-sound-card0-controlC0.device
+After=sound.target user@1000.service sys-devices-platform-soc-3f980000.usb-usb1-1\x2d1-1\x2d1:1.0-sound-card0-controlC0.device
 StartLimitIntervalSec=0
+
 [Service]
 Type=simple
 Restart=always
-RestartSec=1
+RestartSec=5
 User=marcf
 ExecStart=/usr/bin/drempelbox
 CacheDirectory=drempelbox
+Environment=RUST_BACKTRACE=full RUST_LOG=DEBUG XDG_RUNTIME_DIR=/run/user/1000
 
 [Install]
 WantedBy=multi-user.target
