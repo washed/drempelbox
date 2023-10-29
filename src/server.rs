@@ -13,6 +13,7 @@ use crate::player::PlayerRequestMessage;
 #[derive(Clone)]
 pub struct AppState {
     pub sender: mpsc::Sender<PlayerRequestMessage>,
+    pub amp_sender: mpsc::UnboundedSender<bool>,
 }
 
 pub async fn start_server_task(join_set: &mut JoinSet<()>, app_state: AppState) {
@@ -33,6 +34,8 @@ async fn start_server(app_state: AppState) -> Result<(), Box<dyn std::error::Err
         .route("/volume/up", post(volume_up))
         .route("/volume/down", post(volume_down))
         .route("/volume/set", post(volume_set))
+        .route("/amp/on", post(amp_on))
+        .route("/amp/off", post(amp_off))
         .with_state(app_state);
 
     let bind_address: std::net::SocketAddr = env::var("BIND_ADDRESS")
@@ -175,4 +178,24 @@ async fn volume_set(
                 .into_response()
         }
     }
+}
+
+#[debug_handler]
+async fn amp_on(State(state): State<AppState>) -> impl IntoResponse {
+    info!("Got amp on request");
+
+    match state.amp_sender.send(true) {
+        Ok(_) => info!("submitted amp on request"),
+        Err(e) => error!("error submitting amp on request: {e}"),
+    };
+}
+
+#[debug_handler]
+async fn amp_off(State(state): State<AppState>) -> impl IntoResponse {
+    info!("Got amp off request");
+
+    match state.amp_sender.send(false) {
+        Ok(_) => info!("submitted amp off request"),
+        Err(e) => error!("error submitting amp off request: {e}"),
+    };
 }
