@@ -1,6 +1,6 @@
 use bitflags::bitflags;
 use std::str;
-use tracing::debug;
+use tracing::{debug, error};
 
 bitflags! {
     pub struct Flags: u8 {
@@ -78,40 +78,39 @@ impl<'a> ByteGetter<'a> {
         }
     }
 
-    fn check_index(&self) -> Result<(), Box<dyn std::error::Error>> {
+    fn check_index(&self) -> Option<()> {
         match self.len.unwrap_or(usize::MAX) > self.index {
-            true => Ok(()),
-            false => Err(Box::<dyn std::error::Error>::from(
-                "Trying to overread buffer!",
-            )),
+            true => Some(()),
+            false => {
+                error!("Trying to overread buffer!");
+                None
+            }
         }
     }
 
-    pub fn get_byte(&mut self) -> Result<u8, Box<dyn std::error::Error>> {
+    pub fn get_byte(&mut self) -> Option<u8> {
         self.check_index()?;
 
         let res = self.data[self.index];
         debug!("got byte {:02x?}", res);
         self.index += 1;
-        Ok(res)
+        Some(res)
     }
 
-    pub fn get_bytes(&mut self, byte_count: usize) -> Result<&'a [u8], Box<dyn std::error::Error>> {
+    pub fn get_bytes(&mut self, byte_count: usize) -> Option<&'a [u8]> {
         self.check_index()?;
 
         let res = &self.data[self.index..self.index + byte_count];
         debug!("got bytes {:02x?}", res);
         self.index += byte_count;
-        Ok(res)
+        Some(res)
     }
 
-    pub fn get_bytes_const<const N: usize>(
-        &mut self,
-    ) -> Result<[u8; N], Box<dyn std::error::Error>> {
+    pub fn get_bytes_const<const N: usize>(&mut self) -> Option<[u8; N]> {
         self.check_index()?;
         let res: [u8; N] = self.data[self.index..self.index + N].try_into().unwrap();
         self.index += N;
-        Ok(res)
+        Some(res)
     }
 
     pub fn set_len(&mut self, len: usize) {
@@ -151,15 +150,12 @@ impl Message {
     // TODO: This is a slightly less terrible ndef "parser" which is barely MVP ready!
     const MESSAGE_INIT_MARKER: u8 = 0x03;
 
-    fn parse_message_header(
-        bg: &mut ByteGetter,
-    ) -> Result<MessageHeader, Box<dyn std::error::Error>> {
+    fn parse_message_header(bg: &mut ByteGetter) -> Option<MessageHeader> {
         let message_init = bg.get_byte()?;
         debug!(message_init);
         if message_init != Self::MESSAGE_INIT_MARKER {
-            return Err(Box::<dyn std::error::Error>::from(
-                "NDEF Message init marker not found!",
-            ));
+            error!("NDEF Message init marker not found!");
+            return None;
         }
 
         let message_len = bg.get_byte()?;
@@ -171,15 +167,11 @@ impl Message {
             len: message_len,
         };
 
-        Ok(message_header)
+        Some(message_header)
     }
 
-    fn parse_record_raw<'a>(
-        bg: &'a mut ByteGetter<'a>,
-    ) -> Result<RecordRaw<'a>, Box<dyn std::error::Error>> {
-        let flags_tnf = Flags::from_bits(bg.get_byte()?).ok_or(
-            Box::<dyn std::error::Error>::from("couldn't parse flags byte of ndef message"),
-        )?;
+    fn parse_record_raw<'a>(bg: &'a mut ByteGetter<'a>) -> Option<RecordRaw<'a>> {
+        let flags_tnf = Flags::from_bits(bg.get_byte()?)?;
         let type_length = bg.get_byte()? as usize;
 
         let payload_length = match flags_tnf.contains(Flags::SHORT_RECORD) {
@@ -220,19 +212,17 @@ impl Message {
             header: header,
             payload,
         };
-        Ok(record_raw)
+        Some(record_raw)
     }
 
-    fn parse_uri_record(record_raw: RecordRaw) -> Result<Record, Box<dyn std::error::Error>> {
+    fn parse_uri_record(record_raw: RecordRaw) -> Option<Record> {
         let prefix = PREFIX_STRINGS[usize::from(record_raw.payload[0])];
-        let payload = str::from_utf8(&record_raw.payload[1..])?;
+        let payload = str::from_utf8(&record_raw.payload[1..]).ok()?;
         let uri = [prefix, payload].join("");
-        Ok(Record::URI { uri })
+        Some(Record::URI { uri })
     }
 
-    fn parse_records<'a>(
-        bg: &'a mut ByteGetter<'a>,
-    ) -> Result<Vec<Record>, Box<dyn std::error::Error>> {
+    fn parse_records<'a>(bg: &'a mut ByteGetter<'a>) -> Option<Vec<Record>> {
         let mut records = Vec::<Record>::new();
 
         // loop {
@@ -248,16 +238,16 @@ impl Message {
         //     }
         // }
 
-        Ok(records)
+        Some(records)
     }
 
-    pub fn parse(data: &[u8]) -> Result<Message, Box<dyn std::error::Error>> {
+    pub fn parse(data: &[u8]) -> Option<Message> {
         let mut bg = ByteGetter::new(data);
 
         let message_header = Message::parse_message_header(&mut bg)?;
         let records = Message::parse_records(&mut bg)?;
 
-        Ok(Self {
+        Some(Self {
             message_header,
             records,
         })

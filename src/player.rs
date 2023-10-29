@@ -7,22 +7,22 @@ use librespot::playback::config::VolumeCtrl;
 use librespot::playback::mixer;
 use librespot::playback::mixer::MixerConfig;
 use percent_encoding::percent_decode_str;
-use tokio::sync::{broadcast, Mutex};
+use tokio::sync::{mpsc, oneshot, Mutex};
 use tokio::task::JoinSet;
 use tracing::{error, info};
 use url::Url;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum PlayerRequestMessage {
     Stop,
     URL(Url),
-    VolumeUp,
-    VolumeDown,
+    VolumeUp { responder: oneshot::Sender<f64> },
+    VolumeDown { responder: oneshot::Sender<f64> },
 }
 
 pub async fn start_player_task(
     join_set: &mut JoinSet<()>,
-    mut receiver: broadcast::Receiver<PlayerRequestMessage>,
+    mut receiver: mpsc::Receiver<PlayerRequestMessage>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mixer: Arc<Mutex<Box<dyn mixer::Mixer>>> = get_mixer()?;
     let mut spotify_player = SpotifyPlayer::new(mixer.clone()).await?;
@@ -30,8 +30,9 @@ pub async fn start_player_task(
 
     join_set.spawn(async move {
         loop {
-            match receiver.recv().await {
-                Ok(sink_message) => match sink_message {
+            let command = receiver.recv().await;
+            match command {
+                Some(sink_message) => match sink_message {
                     PlayerRequestMessage::Stop => {
                         info!("received stop request");
                         stop(&file_player, &spotify_player).await;
@@ -57,23 +58,35 @@ pub async fn start_player_task(
                         }
                     }
 
-                    PlayerRequestMessage::VolumeUp => {
-                        set_volume_delta(&mixer, 0.01).await;
+                    PlayerRequestMessage::VolumeUp { responder } => {
+                        let new_volume = set_volume_delta(&mixer, 0.01).await;
                         file_player.volume_changed().await;
+                        match responder.send(new_volume) {
+                            Ok(_) => {}
+                            Err(_) => error!("error sending volume up command response"),
+                        };
                     }
-                    PlayerRequestMessage::VolumeDown => {
-                        set_volume_delta(&mixer, -0.01).await;
+                    PlayerRequestMessage::VolumeDown { responder } => {
+                        let new_volume = set_volume_delta(&mixer, -0.01).await;
                         file_player.volume_changed().await;
+                        match responder.send(new_volume) {
+                            Ok(_) => {}
+                            Err(_) => error!("error sending volume up command response"),
+                        };
                     }
                 },
-                Err(e) => error!("Error receiving sink message {e}"),
+                None => error!("hä"), // Err(TryRecvError::Empty) => {}
+                                      // Err(TryRecvError::Closed) => error!("player command channel closed!"),
+                                      // Err(TryRecvError::Lagged(missed_messages)) => {
+                                      //     error!(missed_messages, "player command channel lagged")
+                                      // }
             }
         }
     });
     Ok(())
 }
 
-async fn set_volume_delta(mixer: &Arc<Mutex<Box<dyn mixer::Mixer>>>, delta: f64) {
+async fn set_volume_delta(mixer: &Arc<Mutex<Box<dyn mixer::Mixer>>>, delta: f64) -> f64 {
     let mixer = mixer.lock().await;
 
     // TODO: verify integer math here, make sure we don't explode
@@ -87,6 +100,7 @@ async fn set_volume_delta(mixer: &Arc<Mutex<Box<dyn mixer::Mixer>>>, delta: f64)
         delta,
         current_volume, requested_volume, new_volume, "player volume change request"
     );
+    mixer.get_soft_volume().attenuation_factor()
 }
 
 pub fn get_mixer() -> Result<Arc<Mutex<Box<dyn mixer::Mixer>>>, Box<dyn std::error::Error>> {

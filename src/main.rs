@@ -1,4 +1,4 @@
-use tokio::sync::broadcast;
+use tokio::sync::mpsc;
 use tokio::task::JoinSet;
 use tracing::error;
 use tracing_subscriber;
@@ -24,7 +24,7 @@ pub mod tuple_windows;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
-    let (sender, receiver) = broadcast::channel::<PlayerRequestMessage>(16);
+    let (sender, receiver) = mpsc::channel::<PlayerRequestMessage>(16);
     let app_state = AppState { sender };
 
     let mut join_set = JoinSet::<()>::new();

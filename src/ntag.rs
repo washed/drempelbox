@@ -51,8 +51,10 @@ async fn start_ntag_reader_task_impl(
                 (None, Some(uid)) => {
                     info!("new token: {:02x?}", uid);
                     let mut ntag = ntag_rx.lock().await;
-                    match ntag.read() {
-                        Ok(ndef) => {
+
+                    let result = ntag.read();
+                    match result {
+                        Some(ndef) => {
                             // TODO: only the first record is used
                             let Record::URI { uri } = &ndef.records[0];
                             let url = match Url::parse(&uri) {
@@ -63,17 +65,17 @@ async fn start_ntag_reader_task_impl(
                                     continue;
                                 }
                             };
-                            match app_state.sender.send(PlayerRequestMessage::URL(url)) {
+                            match app_state.sender.send(PlayerRequestMessage::URL(url)).await {
                                 Ok(_) => {}
                                 Err(_) => error!("couldn't send spotify request from ntag"),
                             }
                         }
-                        Err(e) => error!(e, "error parsing ndef"),
+                        None => error!("error parsing ndef"),
                     };
                 }
                 (Some(uid), None) => {
                     info!("token removed: {:02x?}", uid);
-                    match app_state.sender.send(PlayerRequestMessage::Stop) {
+                    match app_state.sender.send(PlayerRequestMessage::Stop).await {
                         Ok(_) => {}
                         Err(_) => error!("couldn't send spotify request from ntag"),
                     };
