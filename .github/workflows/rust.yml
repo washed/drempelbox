@@ -16,7 +16,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Build
-      run: cargo build --verbose
+    - name: Install cross
+      run: cargo install cross --git https://github.com/cross-rs/cross
+    - name: Build arm64
+      run: cross build --release --target=aarch64-unknown-linux-gnu --verbose
     - name: Run tests
       run: cargo test --verbose
