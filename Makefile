@@ -49,3 +49,6 @@ volume_up:
 
 volume_down:
 	curl -X POST -G "http://${CURL_TEST_HOST_PORT}/volume/down"
+
+volume_set:
+	curl -X POST -G "http://${CURL_TEST_HOST_PORT}/volume/set" --data-urlencode 'volume=$(volume)'
