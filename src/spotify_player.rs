@@ -85,73 +85,81 @@ impl SpotifyPlayer {
         player: Arc<Mutex<Player>>,
         mut player_rx: UnboundedReceiver<SpotifyPlayerCommand>,
         mut player_event_receiver: UnboundedReceiver<PlayerEvent>,
-    ) -> JoinHandle<()> {
-        tokio::spawn(async move {
-            let mut tracks: VecDeque<SpotifyId> = VecDeque::new();
+    ) -> (JoinHandle<()>, JoinHandle<()>) {
+        let player_command_handler = player.clone();
+        let player_event_handler = player.clone();
 
-            loop {
-                match player_rx.try_recv() {
-                    Ok(command) => {
-                        let mut player = player.lock().await;
-                        match command {
-                            SpotifyPlayerCommand::PlayTracks(new_tracks) => {
-                                let first_track = new_tracks[0];
-                                let rest_tracks = new_tracks[1..].to_vec();
+        let tracks: Arc<Mutex<VecDeque<SpotifyId>>> = Arc::new(Mutex::new(VecDeque::new()));
+        let tracks_command_handler = tracks.clone();
+        let tracks_event_handler = tracks.clone();
 
-                                // start playing the first track immediately
-                                player.load(first_track, true, 0);
+        (
+            tokio::spawn(async move {
+                loop {
+                    match player_rx.recv().await {
+                        Some(command) => {
+                            let mut player = player_command_handler.lock().await;
+                            let mut tracks = tracks_command_handler.lock().await;
+                            match command {
+                                SpotifyPlayerCommand::PlayTracks(new_tracks) => {
+                                    let first_track = new_tracks[0];
+                                    let rest_tracks = new_tracks[1..].to_vec();
 
-                                // queue up the other tracks
-                                tracks = rest_tracks.into();
-                            }
-                            SpotifyPlayerCommand::Stop => {
-                                info!("stopping spotify");
-                                tracks.clear();
-                                player.stop();
-                            }
-                        }
-                    }
-                    Err(TryRecvError::Empty) => {}
-                    Err(TryRecvError::Disconnected) => {
-                        error!("SpotifyPlayerCommand channel disconnected!")
-                    }
-                }
+                                    // start playing the first track immediately
+                                    player.load(first_track, true, 0);
 
-                match player_event_receiver.try_recv() {
-                    Ok(player_event) => {
-                        let mut player = player.lock().await;
-
-                        match player_event {
-                            PlayerEvent::TimeToPreloadNextTrack {
-                                play_request_id: _,
-                                track_id: _,
-                            } => {
-                                info!("TimeToPreloadNextTrack!");
-                                if let Some(next_track) = tracks.front() {
-                                    info!(next_track.id, "pre-loading");
-                                    player.preload(next_track.to_owned());
+                                    // queue up the other tracks
+                                    tracks.extend(rest_tracks);
+                                }
+                                SpotifyPlayerCommand::Stop => {
+                                    info!("stopping spotify");
+                                    tracks.clear();
+                                    player.stop();
                                 }
                             }
-                            PlayerEvent::EndOfTrack {
-                                play_request_id: _,
-                                track_id: _,
-                            } => {
-                                info!("EndOfTrack!");
-                                if let Some(next_track) = tracks.pop_front() {
-                                    info!(next_track.id, "playing");
-                                    player.load(next_track, true, 0);
+                        }
+                        None => {}
+                    }
+                }
+            }),
+            tokio::spawn(async move {
+                loop {
+                    match player_event_receiver.recv().await {
+                        Some(player_event) => {
+                            let mut player = player_event_handler.lock().await;
+                            let mut tracks = tracks_event_handler.lock().await;
+
+                            match player_event {
+                                PlayerEvent::TimeToPreloadNextTrack {
+                                    play_request_id: _,
+                                    track_id: _,
+                                } => {
+                                    info!("TimeToPreloadNextTrack!");
+                                    if let Some(next_track) = tracks.front() {
+                                        info!(next_track.id, "pre-loading");
+                                        player.preload(next_track.to_owned());
+                                    }
+                                }
+                                PlayerEvent::EndOfTrack {
+                                    play_request_id: _,
+                                    track_id: _,
+                                } => {
+                                    info!("EndOfTrack!");
+                                    if let Some(next_track) = tracks.pop_front() {
+                                        info!(next_track.id, "playing");
+                                        player.load(next_track, true, 0);
+                                    }
+                                }
+                                _ => {
+                                    // TODO: implement more events?
                                 }
                             }
-                            _ => {
-                                // TODO: implement more events?
-                            }
                         }
+                        None => {}
                     }
-                    Err(TryRecvError::Empty) => {}
-                    Err(TryRecvError::Disconnected) => error!("PlayerEvent channel disconnected!"),
                 }
-            }
-        })
+            }),
+        )
     }
 
     async fn connect(
