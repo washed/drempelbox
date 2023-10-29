@@ -16,6 +16,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: Install system dependencies
+      run: sudo apt install libasound2-dev
     - name: Install cross
       run: cargo install cross --git https://github.com/cross-rs/cross
     - name: Build x86_64
