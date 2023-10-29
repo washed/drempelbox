@@ -32,6 +32,7 @@ async fn start_server(app_state: AppState) -> Result<(), Box<dyn std::error::Err
         .route("/stop", post(stop))
         .route("/volume/up", post(volume_up))
         .route("/volume/down", post(volume_down))
+        .route("/volume/set", post(volume_set))
         .with_state(app_state);
 
     let bind_address: std::net::SocketAddr = env::var("BIND_ADDRESS")
@@ -120,6 +121,47 @@ async fn volume_down(State(state): State<AppState>) -> impl IntoResponse {
     {
         Ok(_) => info!("submitted volume up request"),
         Err(e) => error!("error submitting volume up request: {e}"),
+    };
+
+    match receiver.await {
+        Ok(response) => (StatusCode::OK, Json(Volume { volume: response })).into_response(),
+        Err(_) => {
+            error!("didn't receive player command response");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json("error receiving player command response"),
+            )
+                .into_response()
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct VolumeSetQuery {
+    volume: f64,
+}
+
+#[debug_handler]
+async fn volume_set(
+    State(state): State<AppState>,
+    volume_set_query: Query<VolumeSetQuery>,
+) -> impl IntoResponse {
+    info!("Got volume set request");
+
+    let volume = volume_set_query.0.volume;
+
+    let (sender, receiver) = oneshot::channel::<f64>();
+
+    match state
+        .sender
+        .send(PlayerRequestMessage::VolumeSet {
+            volume,
+            responder: sender,
+        })
+        .await
+    {
+        Ok(_) => info!("submitted volume set request"),
+        Err(e) => error!("error submitting volume set request: {e}"),
     };
 
     match receiver.await {

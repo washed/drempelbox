@@ -16,8 +16,16 @@ use url::Url;
 pub enum PlayerRequestMessage {
     Stop,
     URL(Url),
-    VolumeUp { responder: oneshot::Sender<f64> },
-    VolumeDown { responder: oneshot::Sender<f64> },
+    VolumeUp {
+        responder: oneshot::Sender<f64>,
+    },
+    VolumeDown {
+        responder: oneshot::Sender<f64>,
+    },
+    VolumeSet {
+        volume: f64,
+        responder: oneshot::Sender<f64>,
+    },
 }
 
 pub async fn start_player_task(
@@ -57,7 +65,6 @@ pub async fn start_player_task(
                             &_ => info!(log_url, "not sure what to do with this url"),
                         }
                     }
-
                     PlayerRequestMessage::VolumeUp { responder } => {
                         let new_volume = set_volume_delta(&mixer, 0.01).await;
                         file_player.volume_changed().await;
@@ -68,6 +75,14 @@ pub async fn start_player_task(
                     }
                     PlayerRequestMessage::VolumeDown { responder } => {
                         let new_volume = set_volume_delta(&mixer, -0.01).await;
+                        file_player.volume_changed().await;
+                        match responder.send(new_volume) {
+                            Ok(_) => {}
+                            Err(_) => error!("error sending volume up command response"),
+                        };
+                    }
+                    PlayerRequestMessage::VolumeSet { volume, responder } => {
+                        let new_volume = set_volume_absolute(&mixer, volume).await;
                         file_player.volume_changed().await;
                         match responder.send(new_volume) {
                             Ok(_) => {}
@@ -100,7 +115,22 @@ async fn set_volume_delta(mixer: &Arc<Mutex<Box<dyn mixer::Mixer>>>, delta: f64)
         delta,
         current_volume, requested_volume, new_volume, "player volume change request"
     );
-    mixer.get_soft_volume().attenuation_factor()
+    new_volume as f64 / VolumeCtrl::MAX_VOLUME as f64
+}
+
+async fn set_volume_absolute(mixer: &Arc<Mutex<Box<dyn mixer::Mixer>>>, volume: f64) -> f64 {
+    let mixer = mixer.lock().await;
+
+    // TODO: verify integer math here, make sure we don't explode
+    let requested_volume = volume * VolumeCtrl::MAX_VOLUME as f64;
+    let requested_volume = requested_volume.clamp(0.0, u16::MAX as f64) as u16;
+    mixer.set_volume(requested_volume);
+    let new_volume = mixer.volume();
+    info!(
+        volume,
+        requested_volume, new_volume, "player volume change request"
+    );
+    new_volume as f64 / VolumeCtrl::MAX_VOLUME as f64
 }
 
 pub fn get_mixer() -> Result<Arc<Mutex<Box<dyn mixer::Mixer>>>, Box<dyn std::error::Error>> {
