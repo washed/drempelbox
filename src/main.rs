@@ -20,14 +20,20 @@ use crate::player::{start_player_task, PlayerRequestMessage};
 
 pub mod tuple_windows;
 
+pub mod amp;
+use crate::amp::Amp;
+
 #[tokio::main()]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
-    let (sender, receiver) = mpsc::channel::<PlayerRequestMessage>(16);
-    let app_state = AppState { sender };
-
     let mut join_set = JoinSet::<()>::new();
+
+    let amp_sender = Amp::new(&mut join_set).await?;
+    amp_sender.send(true)?;
+
+    let (sender, receiver) = mpsc::channel::<PlayerRequestMessage>(16);
+    let app_state = AppState { sender, amp_sender };
 
     start_player_task(&mut join_set, receiver).await?;
     start_ntag_reader_task(&mut join_set, app_state.clone()).await;
