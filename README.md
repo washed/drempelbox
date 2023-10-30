@@ -109,7 +109,7 @@ classDiagram
 
 ### Schematic
 
-[KiCAD schematic](ecad/schematic.svg)
+![KiCAD schematic](ecad/schematic.svg)
 
 ## Software
 
