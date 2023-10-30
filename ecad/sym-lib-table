@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "drempelbox")(type "KiCad")(uri "${KIPRJMOD}/drempelbox.kicad_sym")(options "")(descr ""))
+)
