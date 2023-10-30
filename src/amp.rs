@@ -1,35 +1,24 @@
 use async_std::sync::Arc;
-use linux_embedded_hal::sysfs_gpio::{Direction, Error};
-use linux_embedded_hal::Pin;
+use rppal::gpio::{Error, Gpio, OutputPin};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::sync::Mutex;
 use tokio::task::JoinSet;
-use tokio::time::{sleep, Duration};
 use tracing::error;
 
 pub struct Amp {
-    pin: Arc<Mutex<Pin>>,
+    pin: Arc<Mutex<OutputPin>>,
     receiver: UnboundedReceiver<bool>,
 }
 
 impl Amp {
-    const AMP_SD_GPIO_PIN: u64 = 21;
-    const DELAY: Duration = Duration::from_millis(1);
+    const AMP_SD_GPIO_PIN: u8 = 21;
 
     pub async fn new(join_set: &mut JoinSet<()>) -> Result<UnboundedSender<bool>, Error> {
-        let pin = Pin::new(Amp::AMP_SD_GPIO_PIN);
-        pin.export()?;
-        while !pin.is_exported() {
-            sleep(Amp::DELAY).await;
-        }
-        // delay sometimes necessary because `is_exported()` returns too early?
-        sleep(Amp::DELAY).await;
+        let mut pin = Gpio::new()?.get(Amp::AMP_SD_GPIO_PIN)?.into_output();
 
-        pin.set_value(1)?;
-        pin.set_direction(Direction::Out)?;
+        pin.set_high();
 
         let pin = Arc::new(Mutex::new(pin));
-
         let (sender, receiver) = unbounded_channel::<bool>();
         let mut amp = Self { pin, receiver };
 
@@ -48,27 +37,20 @@ impl Amp {
     }
 
     async fn enable(&self, enable: bool) {
-        match {
-            match enable {
-                true => self.on().await,
-                false => self.off().await,
-            }
-        } {
-            Ok(_) => {}
-            Err(_) => error!(enable, "error switching amp"),
-        }
+        match enable {
+            true => self.on().await,
+            false => self.off().await,
+        };
     }
 
-    async fn on(&self) -> Result<(), Error> {
+    async fn on(&self) {
         // main amp turn on!
-        let pin = self.pin.lock().await;
-        pin.set_value(0)?;
-        Ok(())
+        let mut pin = self.pin.lock().await;
+        pin.set_low();
     }
 
-    async fn off(&self) -> Result<(), Error> {
-        let pin = self.pin.lock().await;
-        pin.set_value(1)?;
-        Ok(())
+    async fn off(&self) {
+        let mut pin = self.pin.lock().await;
+        pin.set_high();
     }
 }

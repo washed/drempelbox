@@ -770,6 +770,7 @@ dependencies = [
  "percent-encoding",
  "pin-project-lite",
  "rodio 0.17.1",
+ "rppal",
  "serde",
  "serde_json",
  "sha1",
@@ -2450,6 +2451,15 @@ dependencies = [
  "serde",
  "serde_json",
  "winapi",
+]
+
+[[package]]
+name = "rppal"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "815253b59e1b9c89918977155f7a4f39007cfe2b0cc5cf50615f9df275b9453c"
+dependencies = [
+ "libc",
 ]
 
 [[package]]
