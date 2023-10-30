@@ -14,3 +14,33 @@ target/
 *.pdb
 
 .drempelcache/
+
+# KiCAD ignores
+# Temporary files
+ecad/*.000
+ecad/*.bak
+ecad/*.bck
+ecad/*.kicad_pcb-bak
+ecad/*.kicad_sch-bak
+ecad/*-backups
+ecad/*.kicad_prl
+ecad/*.sch-bak
+ecad/~*
+ecad/_autosave-*
+ecad/*.tmp
+ecad/*-save.pro
+ecad/*-save.kicad_pcb
+ecad/fp-info-cache
+
+# Netlist files (exported from Eeschema)
+ecad/*.net
+
+# Autorouter files (exported from Pcbnew)
+ecad/*.dsn
+ecad/*.ses
+
+# Exported BOM files
+ecad/*.xml
+ecad/*.csv
+
+ecad/#auto_saved_files#
