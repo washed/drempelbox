@@ -52,3 +52,9 @@ volume_down:
 
 volume_set:
 	curl -X POST -G "http://${CURL_TEST_HOST_PORT}/volume/set" --data-urlencode 'volume=$(volume)'
+
+amp_on:
+	curl -X POST -G "http://${CURL_TEST_HOST_PORT}/amp/on"
+
+amp_off:
+	curl -X POST -G "http://${CURL_TEST_HOST_PORT}/amp/off"
