@@ -107,6 +107,10 @@ classDiagram
     }
 ```
 
+### Schematic
+
+[KiCAD schematic](ecad/schematic.svg)
+
 ## Software
 
 ```mermaid
