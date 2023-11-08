@@ -31,6 +31,7 @@ pub enum PlayerRequestMessage {
 pub async fn start_player_task(
     join_set: &mut JoinSet<()>,
     mut receiver: mpsc::Receiver<PlayerRequestMessage>,
+    amp_sender: mpsc::UnboundedSender<bool>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mixer: Arc<Mutex<Box<dyn mixer::Mixer>>> = get_mixer()?;
     let mut spotify_player = SpotifyPlayer::new(mixer.clone()).await?;
@@ -43,7 +44,7 @@ pub async fn start_player_task(
                 Some(sink_message) => match sink_message {
                     PlayerRequestMessage::Stop => {
                         info!("received stop request");
-                        stop(&file_player, &spotify_player).await;
+                        stop(&file_player, &spotify_player, &amp_sender).await;
                     }
                     PlayerRequestMessage::URL(url) => {
                         let log_url = url.to_string();
@@ -53,14 +54,20 @@ pub async fn start_player_task(
                             "https" => match url.host_str() {
                                 Some("open.spotify.com") => {
                                     info!(log_url, "playing spotify from url");
-                                    play_spotify(&file_player, &mut spotify_player, url).await;
+                                    play_spotify(
+                                        &file_player,
+                                        &mut spotify_player,
+                                        url,
+                                        &amp_sender,
+                                    )
+                                    .await;
                                 }
                                 _ => error!(log_url, "unsupported URL"),
                             },
                             "file" => {
                                 // TODO: we should sanitize the path here...
                                 info!(log_url, "playing file from url");
-                                play_file(&file_player, &spotify_player, url).await;
+                                play_file(&file_player, &spotify_player, url, &amp_sender).await;
                             }
                             &_ => info!(log_url, "not sure what to do with this url"),
                         }
@@ -143,7 +150,11 @@ pub fn get_mixer() -> Result<Arc<Mutex<Box<dyn mixer::Mixer>>>, Box<dyn std::err
     Ok(mixer)
 }
 
-async fn stop(file_player: &FilePlayer, spotify_player: &SpotifyPlayer) {
+async fn stop(
+    file_player: &FilePlayer,
+    spotify_player: &SpotifyPlayer,
+    amp_sender: &mpsc::UnboundedSender<bool>,
+) {
     match file_player.stop().await {
         Ok(_) => {}
         Err(e) => error!(e, "Error stopping file playback!"),
@@ -152,9 +163,36 @@ async fn stop(file_player: &FilePlayer, spotify_player: &SpotifyPlayer) {
         Ok(_) => {}
         Err(e) => error!(e, "Error stopping spotify playback!"),
     };
+    match amp_sender.send(false) {
+        Ok(_) => {}
+        Err(e) => {
+            let error_msg = e.to_string();
+            error!(
+                error_msg,
+                "Error switching off amp after stopping playback!"
+            )
+        }
+    };
 }
 
-async fn play_spotify(file_player: &FilePlayer, spotify_player: &mut SpotifyPlayer, url: Url) {
+async fn play_spotify(
+    file_player: &FilePlayer,
+    spotify_player: &mut SpotifyPlayer,
+    url: Url,
+    amp_sender: &mpsc::UnboundedSender<bool>,
+) {
+    match amp_sender.send(true) {
+        Ok(_) => {}
+        Err(e) => {
+            let error_msg = e.to_string();
+            error!(
+                error_msg,
+                "Error switching on amp before starting playback!"
+            )
+        }
+    };
+    // TODO: do we want to wait for this to actually happen?
+
     match file_player.stop().await {
         Ok(_) => {}
         Err(e) => error!(e, "Error stopping file playback!"),
@@ -165,7 +203,24 @@ async fn play_spotify(file_player: &FilePlayer, spotify_player: &mut SpotifyPlay
     };
 }
 
-async fn play_file(file_player: &FilePlayer, spotify_player: &SpotifyPlayer, url: Url) {
+async fn play_file(
+    file_player: &FilePlayer,
+    spotify_player: &SpotifyPlayer,
+    url: Url,
+    amp_sender: &mpsc::UnboundedSender<bool>,
+) {
+    match amp_sender.send(true) {
+        Ok(_) => {}
+        Err(e) => {
+            let error_msg = e.to_string();
+            error!(
+                error_msg,
+                "Error switching on amp before starting playback!"
+            )
+        }
+    };
+    // TODO: do we want to wait for this to actually happen?
+
     match spotify_player.stop().await {
         Ok(_) => {}
         Err(e) => error!(e, "Error stopping spotify playback!"),
