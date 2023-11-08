@@ -29,13 +29,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut join_set = JoinSet::<()>::new();
 
-    let amp_sender = Amp::new(&mut join_set).await?;
-    let amp_sender_player = amp_sender.clone();
+    let amp = Amp::new(&mut join_set).await?;
+    let amp_player = amp.clone();
 
     let (sender, receiver) = mpsc::channel::<PlayerRequestMessage>(16);
-    let app_state = AppState { sender, amp_sender };
+    let app_state = AppState { sender, amp };
 
-    start_player_task(&mut join_set, receiver, amp_sender_player).await?;
+    start_player_task(&mut join_set, receiver, amp_player).await?;
     start_ntag_reader_task(&mut join_set, app_state.clone()).await;
     start_server_task(&mut join_set, app_state.clone()).await;
 

@@ -8,12 +8,13 @@ use tokio::task::JoinSet;
 use tracing::{error, info};
 use url::Url;
 
+use crate::amp::Amp;
 use crate::player::PlayerRequestMessage;
 
 #[derive(Clone)]
 pub struct AppState {
     pub sender: mpsc::Sender<PlayerRequestMessage>,
-    pub amp_sender: mpsc::UnboundedSender<bool>,
+    pub amp: Amp,
 }
 
 pub async fn start_server_task(join_set: &mut JoinSet<()>, app_state: AppState) {
@@ -184,18 +185,32 @@ async fn volume_set(
 async fn amp_on(State(state): State<AppState>) -> impl IntoResponse {
     info!("Got amp on request");
 
-    match state.amp_sender.send(true) {
-        Ok(_) => info!("submitted amp on request"),
-        Err(e) => error!("error submitting amp on request: {e}"),
-    };
+    match state.amp.on().await {
+        Ok(_) => (StatusCode::OK).into_response(),
+        Err(_) => {
+            error!("didn't receive amp on command response");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json("error receiving amp on command response"),
+            )
+                .into_response()
+        }
+    }
 }
 
 #[debug_handler]
 async fn amp_off(State(state): State<AppState>) -> impl IntoResponse {
     info!("Got amp off request");
 
-    match state.amp_sender.send(false) {
-        Ok(_) => info!("submitted amp off request"),
-        Err(e) => error!("error submitting amp off request: {e}"),
-    };
+    match state.amp.off().await {
+        Ok(_) => (StatusCode::OK).into_response(),
+        Err(_) => {
+            error!("didn't receive amp off command response");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json("error receiving amp off command response"),
+            )
+                .into_response()
+        }
+    }
 }
