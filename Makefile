@@ -12,7 +12,9 @@ copy:
 	scp service/drempelbox.service ${RPI_HOST}:${RPI_TEMP_PATH}/drempelbox.service
 	scp target/aarch64-unknown-linux-gnu/release/drempelbox ${RPI_HOST}:${RPI_TEMP_PATH}/drempelbox
 
-	ssh ${RPI_HOST} sudo systemctl stop drempelbox
+	if systemctl is-active --quiet service; then \
+		ssh ${RPI_HOST} sudo systemctl stop drempelbox; \
+	fi
 
 	ssh ${RPI_HOST} sudo mv ${RPI_TEMP_PATH}/drempelbox /usr/bin/drempelbox
 	ssh ${RPI_HOST} sudo mv ${RPI_TEMP_PATH}/drempelbox.service /etc/systemd/system/drempelbox.service
