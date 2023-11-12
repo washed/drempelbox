@@ -44,3 +44,6 @@ ecad/*.xml
 ecad/*.csv
 
 ecad/#auto_saved_files#
+
+# Ignore .envrc
+**/.envrc
