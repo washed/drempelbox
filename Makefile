@@ -1,4 +1,4 @@
-.PHONY: build build-aarch64-unknown-linux-gnu build-x86_64-unknown-linux-gnu copy service file track album playlist artist stop
+.PHONY: build build-aarch64-unknown-linux-gnu build-x86_64-unknown-linux-gnu copy bca service file track album playlist artist stop
 
 build: build-aarch64-unknown-linux-gnu build-x86_64-unknown-linux-gnu
 
@@ -19,6 +19,8 @@ copy:
 
 	ssh ${RPI_HOST} sudo systemctl daemon-reload
 	ssh ${RPI_HOST} sudo systemctl restart drempelbox
+
+bca: build-aarch64-unknown-linux-gnu copy
 
 service:
 	ssh ${RPI_HOST} sudo systemctl enable drempelbox
