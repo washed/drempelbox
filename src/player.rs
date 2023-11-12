@@ -90,11 +90,7 @@ pub async fn start_player_task(
                         };
                     }
                 },
-                None => error!("hä"), // Err(TryRecvError::Empty) => {}
-                                      // Err(TryRecvError::Closed) => error!("player command channel closed!"),
-                                      // Err(TryRecvError::Lagged(missed_messages)) => {
-                                      //     error!(missed_messages, "player command channel lagged")
-                                      // }
+                None => error!("PlayerRequestMessage channel has been closed!"),
             }
         }
     });
