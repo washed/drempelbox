@@ -23,6 +23,9 @@ pub mod tuple_windows;
 pub mod amp;
 use crate::amp::Amp;
 
+pub mod shutdown;
+use crate::shutdown::Shutdown;
+
 #[tokio::main()]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
@@ -31,6 +34,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let amp = Amp::new(&mut join_set).await?;
     let amp_player = amp.clone();
+
+    let _shutdown = Shutdown::new(&mut join_set).await?;
 
     let (sender, receiver) = mpsc::channel::<PlayerRequestMessage>(16);
     let app_state = AppState { sender, amp };
