@@ -70,6 +70,28 @@ dtoverlay=gpio-poweroff,gpiopin=4,active_delay_ms=5000,inactive_delay_ms=1000,ac
 This enables the Pi to keep itself powered during normal operation
 and switch itself off after poweroff. See the [schematic](#schematic) for details.
 
+Create the service user and its group:
+`sudo adduser --system --no-create-home --group drempelbox`
+
+Create a polkit rule to allow the user to shutdown the system.
+Create the file `/etc/polkit-1/rules.d/40-allow-shutdown.rules` and add these contents:
+```
+/* Allow members of the drempelbox group to shutdown without authentication */
+polkit.addRule(function(action, subject) {
+   if ( ( action.id == "org.freedesktop.login1.power-off" ||
+          action.id == "org.freedesktop.login1.power-off-multiple-sessions"
+        ) && subject.isInGroup("drempelbox") ) {
+     polkit.log("Powering Off permitted for subject" + subject)
+     return polkit.Result.YES;
+   }
+});
+```
+
+Restart the system or the polkit service for the changes to take effect:
+```bash
+systemctl restart polkit.service
+```
+
 ## Hardware
 
 Rough block diagram of system components:
