@@ -2139,7 +2139,7 @@
     (uuid fd66cbe3-b667-4731-ad89-f9c11c515d6b)
   )
 
-  (text "from off:\n* button gets pushed\n* powerbank starts up\n* +5V comes up\n* Q3 starts conducting because gate\n  grounded through switch\n* Pi boots and asserts PI_KEEPALIVE\n  high through overlay (timing?)\n* Q2 grounds Q3 gate\n* push button can be released\n  Pi keeps itself on\n\nfrom on:\n* pi enters halt state and asserts\n  PI_KEEPALIVE low through gpio-poweroff overlay\n* Q3 gate floats, cutting off +5V from Pi"
+  (text "from off:\n* button gets pushed\n* powerbank starts up\n* +5V comes up\n* U5B starts conducting because gate\n  grounded through switch\n* Pi boots and asserts PI_KEEPALIVE\n  high through overlay (timing?)\n* U5A grounds U5B gate\n* push button can be released\n  Pi keeps itself on\n\nfrom on:\n* pi enters halt state and asserts\n  PI_KEEPALIVE low through gpio-poweroff overlay\n* Q3 gate floats, cutting off +5V from Pi"
     (at 194.31 57.15 0)
     (effects (font (size 1 1)) (justify left bottom))
     (uuid 2f53dd63-01c2-4b4c-833c-ad30f7c1d357)
