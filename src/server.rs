@@ -37,6 +37,8 @@ async fn start_server(app_state: AppState) -> Result<(), Box<dyn std::error::Err
         .route("/volume/set", post(volume_set))
         .route("/amp/on", post(amp_on))
         .route("/amp/off", post(amp_off))
+        .route("/amp/power-on", post(amp_power_on))
+        .route("/amp/power-off", post(amp_power_off))
         .with_state(app_state);
 
     let bind_address: std::net::SocketAddr = env::var("BIND_ADDRESS")
@@ -209,6 +211,40 @@ async fn amp_off(State(state): State<AppState>) -> impl IntoResponse {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json("error receiving amp off command response"),
+            )
+                .into_response()
+        }
+    }
+}
+
+#[debug_handler]
+async fn amp_power_on(State(state): State<AppState>) -> impl IntoResponse {
+    info!("Got amp power on request");
+
+    match state.amp.power_on().await {
+        Ok(_) => (StatusCode::OK).into_response(),
+        Err(_) => {
+            error!("didn't receive amp power on command response");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json("error receiving amp power on command response"),
+            )
+                .into_response()
+        }
+    }
+}
+
+#[debug_handler]
+async fn amp_power_off(State(state): State<AppState>) -> impl IntoResponse {
+    info!("Got amp power off request");
+
+    match state.amp.power_off().await {
+        Ok(_) => (StatusCode::OK).into_response(),
+        Err(_) => {
+            error!("didn't receive amp power off command response");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json("error receiving amp power off command response"),
             )
                 .into_response()
         }

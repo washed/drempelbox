@@ -1,7 +1,10 @@
-use tokio::sync::mpsc;
+use std::time::Duration;
+
+use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinSet;
-use tracing::error;
-use tracing_subscriber;
+use tracing::{error, info};
+use tracing_subscriber::prelude::*;
+use url::Url;
 
 pub mod ndef;
 pub mod ntag215;
@@ -43,6 +46,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     start_player_task(&mut join_set, receiver, amp_player).await?;
     start_ntag_reader_task(&mut join_set, app_state.clone()).await;
     start_server_task(&mut join_set, app_state.clone()).await;
+
+    app_state.amp.power_on().await?;
 
     while let Some(_res) = join_set.join_next().await {
         let err = _res.err().unwrap().to_string();
