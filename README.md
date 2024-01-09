@@ -73,6 +73,13 @@ and switch itself off after poweroff. See the [schematic](#schematic) for detail
 Create the service user and its group:
 `sudo adduser --system --no-create-home --group drempelbox`
 
+Add the user to these system groups to give it the necessary permissions:
+```bash
+sudo usermod -a -G gpio drempelbox
+sudo usermod -a -G audio drempelbox
+sudo usermod -a -G spi drempelbox
+```
+
 Create a polkit rule to allow the user to shutdown the system.
 Create the file `/etc/polkit-1/rules.d/40-allow-shutdown.rules` and add these contents:
 ```
