@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinSet;
+use tokio::time::sleep;
 use tracing::{error, info};
 use tracing_subscriber::prelude::*;
 use url::Url;
@@ -48,6 +49,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     start_server_task(&mut join_set, app_state.clone()).await;
 
     app_state.amp.power_on().await?;
+    sleep(Duration::from_millis(250)).await;
 
     while let Some(_res) = join_set.join_next().await {
         let err = _res.err().unwrap().to_string();
