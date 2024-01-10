@@ -57,7 +57,7 @@ async fn start_ntag_reader_task_impl(
                         Some(ndef) => {
                             // TODO: only the first record is used
                             let Record::URI { uri } = &ndef.records[0];
-                            let url = match Url::parse(&uri) {
+                            let url = match Url::parse(uri) {
                                 Ok(url) => url,
                                 Err(e) => {
                                     let e = e.to_string();

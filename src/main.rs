@@ -1,11 +1,9 @@
 use std::time::Duration;
 
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::mpsc;
 use tokio::task::JoinSet;
 use tokio::time::sleep;
-use tracing::{error, info};
-use tracing_subscriber::prelude::*;
-use url::Url;
+use tracing::error;
 
 pub mod ndef;
 pub mod ntag215;

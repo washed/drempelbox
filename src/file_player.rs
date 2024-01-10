@@ -46,7 +46,7 @@ impl FilePlayer {
         let sink = self.sink.lock().await;
         sink.play();
 
-        if play_immediately == true && !sink.empty() {
+        if play_immediately && !sink.empty() {
             sink.clear();
         }
 
