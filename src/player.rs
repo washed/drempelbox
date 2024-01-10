@@ -29,12 +29,14 @@ pub enum PlayerRequestMessage {
     },
 }
 
+type Mixer = Arc<Mutex<Box<dyn mixer::Mixer>>>;
+
 pub async fn start_player_task(
     join_set: &mut JoinSet<()>,
     mut receiver: mpsc::Receiver<PlayerRequestMessage>,
     amp: Amp,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mixer: Arc<Mutex<Box<dyn mixer::Mixer>>> = get_mixer()?;
+    let mixer: Mixer = get_mixer()?;
     let mut spotify_player = SpotifyPlayer::new(mixer.clone()).await?;
     let file_player = FilePlayer::new(mixer.clone()).await?;
 
@@ -100,7 +102,7 @@ pub async fn start_player_task(
     Ok(())
 }
 
-async fn set_volume_delta(mixer: &Arc<Mutex<Box<dyn mixer::Mixer>>>, delta: f64) -> f64 {
+async fn set_volume_delta(mixer: &Mixer, delta: f64) -> f64 {
     let mixer = mixer.lock().await;
 
     // TODO: verify integer math here, make sure we don't explode
@@ -117,7 +119,7 @@ async fn set_volume_delta(mixer: &Arc<Mutex<Box<dyn mixer::Mixer>>>, delta: f64)
     new_volume as f64 / VolumeCtrl::MAX_VOLUME as f64
 }
 
-async fn set_volume_absolute(mixer: &Arc<Mutex<Box<dyn mixer::Mixer>>>, volume: f64) -> f64 {
+async fn set_volume_absolute(mixer: &Mixer, volume: f64) -> f64 {
     let mixer = mixer.lock().await;
 
     // TODO: verify integer math here, make sure we don't explode
@@ -132,7 +134,7 @@ async fn set_volume_absolute(mixer: &Arc<Mutex<Box<dyn mixer::Mixer>>>, volume: 
     new_volume as f64 / VolumeCtrl::MAX_VOLUME as f64
 }
 
-pub fn get_mixer() -> Result<Arc<Mutex<Box<dyn mixer::Mixer>>>, Box<dyn std::error::Error>> {
+pub fn get_mixer() -> Result<Mixer, Box<dyn std::error::Error>> {
     let mixer_config = MixerConfig::default();
     let mixer = match mixer::find(Some("softvol")) {
         Some(mixer) => mixer(mixer_config),
