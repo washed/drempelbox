@@ -8,7 +8,7 @@ StartLimitIntervalSec=0
 Type=simple
 Restart=always
 RestartSec=5
-User=marcf
+User=%u
 ExecStart=/usr/bin/drempelbox
 CacheDirectory=drempelbox
 Environment=RUST_BACKTRACE=full RUST_LOG=DEBUG XDG_RUNTIME_DIR=/run/user/1000
