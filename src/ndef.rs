@@ -74,7 +74,7 @@ impl<'a> ByteGetter<'a> {
         ByteGetter {
             index: 0,
             len: None,
-            data: data,
+            data,
         }
     }
 
@@ -208,10 +208,7 @@ impl Message {
 
         let payload = bg.get_bytes(header.payload_length)?;
 
-        let record_raw = RecordRaw {
-            header: header,
-            payload,
-        };
+        let record_raw = RecordRaw { header, payload };
         Some(record_raw)
     }
 

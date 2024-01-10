@@ -73,7 +73,7 @@ impl SpotifyPlayer {
             .launch()
             .unwrap();
 
-        while let Some(x) = server.next().await {
+        if let Some(x) = server.next().await {
             return Some(x);
         }
         None
@@ -94,66 +94,60 @@ impl SpotifyPlayer {
         (
             tokio::spawn(async move {
                 loop {
-                    match player_rx.recv().await {
-                        Some(command) => {
-                            let mut player = player_command_handler.lock().await;
-                            let mut tracks = tracks_command_handler.lock().await;
-                            match command {
-                                SpotifyPlayerCommand::PlayTracks(new_tracks) => {
-                                    let first_track = new_tracks[0];
-                                    let rest_tracks = new_tracks[1..].to_vec();
+                    if let Some(command) = player_rx.recv().await {
+                        let mut player = player_command_handler.lock().await;
+                        let mut tracks = tracks_command_handler.lock().await;
+                        match command {
+                            SpotifyPlayerCommand::PlayTracks(new_tracks) => {
+                                let first_track = new_tracks[0];
+                                let rest_tracks = new_tracks[1..].to_vec();
 
-                                    // start playing the first track immediately
-                                    player.load(first_track, true, 0);
+                                // start playing the first track immediately
+                                player.load(first_track, true, 0);
 
-                                    // queue up the other tracks
-                                    tracks.extend(rest_tracks);
-                                }
-                                SpotifyPlayerCommand::Stop => {
-                                    info!("stopping spotify");
-                                    tracks.clear();
-                                    player.stop();
-                                }
+                                // queue up the other tracks
+                                tracks.extend(rest_tracks);
+                            }
+                            SpotifyPlayerCommand::Stop => {
+                                info!("stopping spotify");
+                                tracks.clear();
+                                player.stop();
                             }
                         }
-                        None => {}
                     }
                 }
             }),
             tokio::spawn(async move {
                 loop {
-                    match player_event_receiver.recv().await {
-                        Some(player_event) => {
-                            let mut player = player_event_handler.lock().await;
-                            let mut tracks = tracks_event_handler.lock().await;
+                    if let Some(player_event) = player_event_receiver.recv().await {
+                        let mut player = player_event_handler.lock().await;
+                        let mut tracks = tracks_event_handler.lock().await;
 
-                            match player_event {
-                                PlayerEvent::TimeToPreloadNextTrack {
-                                    play_request_id: _,
-                                    track_id: _,
-                                } => {
-                                    info!("TimeToPreloadNextTrack!");
-                                    if let Some(next_track) = tracks.front() {
-                                        info!(next_track.id, "pre-loading");
-                                        player.preload(next_track.to_owned());
-                                    }
-                                }
-                                PlayerEvent::EndOfTrack {
-                                    play_request_id: _,
-                                    track_id: _,
-                                } => {
-                                    info!("EndOfTrack!");
-                                    if let Some(next_track) = tracks.pop_front() {
-                                        info!(next_track.id, "playing");
-                                        player.load(next_track, true, 0);
-                                    }
-                                }
-                                _ => {
-                                    // TODO: implement more events?
+                        match player_event {
+                            PlayerEvent::TimeToPreloadNextTrack {
+                                play_request_id: _,
+                                track_id: _,
+                            } => {
+                                info!("TimeToPreloadNextTrack!");
+                                if let Some(next_track) = tracks.front() {
+                                    info!(next_track.id, "pre-loading");
+                                    player.preload(next_track.to_owned());
                                 }
                             }
+                            PlayerEvent::EndOfTrack {
+                                play_request_id: _,
+                                track_id: _,
+                            } => {
+                                info!("EndOfTrack!");
+                                if let Some(next_track) = tracks.pop_front() {
+                                    info!(next_track.id, "playing");
+                                    player.load(next_track, true, 0);
+                                }
+                            }
+                            _ => {
+                                // TODO: implement more events?
+                            }
                         }
-                        None => {}
                     }
                 }
             }),
@@ -207,7 +201,7 @@ impl SpotifyPlayer {
 
     pub async fn play_from_url(&mut self, url: Url) -> Result<(), Box<dyn std::error::Error>> {
         if let Some((context_type, spotify_id)) = url.path().trim_matches('/').split_once('/') {
-            let mut spotify_id = SpotifyId::from_base62(&spotify_id).unwrap();
+            let mut spotify_id = SpotifyId::from_base62(spotify_id).unwrap();
             let session = self.session.lock().await;
 
             match context_type {

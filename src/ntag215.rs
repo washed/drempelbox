@@ -107,10 +107,9 @@ impl NTAG215 {
     }
 
     fn read_blocks(&mut self) {
-        for (block_num, chunk) in (0..NTAG215::FULL_BLOCK_COUNT).zip(
-            self.memory
-                .chunks_exact_mut(NTAG215::BLOCK_SIZE_BYTES as usize),
-        ) {
+        for (block_num, chunk) in (0..NTAG215::FULL_BLOCK_COUNT)
+            .zip(self.memory.chunks_exact_mut(NTAG215::BLOCK_SIZE_BYTES))
+        {
             let page_addr = block_num * NTAG215::BLOCK_PAGE_OFFSET;
             if let Ok(block) = self
                 .mfrc522
@@ -129,7 +128,7 @@ impl NTAG215 {
                 .mf_read(u8::try_from(page_addr).expect("Tried to read out of bound block!"))
             {
                 for (dest, src) in self.memory
-                    [(NTAG215::FULL_BLOCK_COUNT as usize * NTAG215::BLOCK_SIZE_BYTES as usize)..]
+                    [(NTAG215::FULL_BLOCK_COUNT * NTAG215::BLOCK_SIZE_BYTES)..]
                     .iter_mut()
                     .zip(partial_block.iter())
                 {
