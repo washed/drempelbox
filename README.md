@@ -71,7 +71,7 @@ This enables the Pi to keep itself powered during normal operation
 and switch itself off after poweroff. See the [schematic](#schematic) for details.
 
 Create the service user and its group:
-`sudo adduser --system --no-create-home --group drempelbox`
+`sudo adduser --system --no-create-home --group drempelbox --uid 1337`
 
 Add the user to these system groups to give it the necessary permissions:
 ```bash
