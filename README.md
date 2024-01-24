@@ -63,6 +63,42 @@ Assuming a 64 bit RaspberryPI OS lite, install these packages to enable audio su
 
 Enable SPI for NFC ready support (using the raspi-config tool, for example).
 
+Modify `/boot/firmware/config.txt`, adding this line at the end:
+```
+dtoverlay=gpio-poweroff,gpiopin=4,active_delay_ms=5000,inactive_delay_ms=1000,active_low=1
+```
+This enables the Pi to keep itself powered during normal operation
+and switch itself off after poweroff. See the [schematic](#schematic) for details.
+
+Create the service user and its group:
+`sudo adduser --system --no-create-home --group drempelbox --uid 1337`
+
+Add the user to these system groups to give it the necessary permissions:
+```bash
+sudo usermod -a -G gpio drempelbox
+sudo usermod -a -G audio drempelbox
+sudo usermod -a -G spi drempelbox
+```
+
+Create a polkit rule to allow the user to shutdown the system.
+Create the file `/etc/polkit-1/rules.d/40-allow-shutdown.rules` and add these contents:
+```
+/* Allow members of the drempelbox group to shutdown without authentication */
+polkit.addRule(function(action, subject) {
+   if ( ( action.id == "org.freedesktop.login1.power-off" ||
+          action.id == "org.freedesktop.login1.power-off-multiple-sessions"
+        ) && subject.isInGroup("drempelbox") ) {
+     polkit.log("Powering Off permitted for subject" + subject)
+     return polkit.Result.YES;
+   }
+});
+```
+
+Restart the system or the polkit service for the changes to take effect:
+```bash
+systemctl restart polkit.service
+```
+
 ## Hardware
 
 Rough block diagram of system components:
