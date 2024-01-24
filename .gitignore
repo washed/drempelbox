@@ -47,3 +47,6 @@ ecad/#auto_saved_files#
 
 # Ignore .envrc
 **/.envrc
+
+# FreeCAD backup files
+mcad/**.*FCBak
