@@ -7,4 +7,4 @@ ARG CROSS_DEB_ARCH
 # add our foreign architecture and install our dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends apt-utils
 RUN dpkg --add-architecture $CROSS_DEB_ARCH
-RUN apt-get update && apt-get -y install libasound2-dev:$CROSS_DEB_ARCH
+RUN apt-get update && apt-get -y install libasound2-dev:$CROSS_DEB_ARCH libdbus-1-dev:$CROSS_DEB_ARCH

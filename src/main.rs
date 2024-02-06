@@ -28,9 +28,17 @@ use crate::amp::Amp;
 pub mod shutdown;
 use crate::shutdown::Shutdown;
 
+pub mod network;
+use crate::network::connect_wifi;
+
+
 #[tokio::main()]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
+
+    connect_wifi().await?;
+
+    return Ok(());
 
     let mut join_set = JoinSet::<()>::new();
 
