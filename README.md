@@ -57,47 +57,49 @@ Change to any swap size you feel appropriate for your needs.
 
 ## Running on RPi Zero 2W
 
-Assuming a 64 bit RaspberryPI OS lite, install these packages to enable audio support:
-- pipewire
-- pipewire-alsa
+- Assuming a 64 bit RaspberryPI OS lite Bookworm, install these packages to enable audio support:
+  ```bash
+  sudo apt update
+  sudo apt install pipewire pipewire-alsa
+  ```
 
-Enable SPI for NFC ready support (using the raspi-config tool, for example).
+- Enable SPI for NFC ready support (using the raspi-config tool, for example)
+- Enable a gpio overlay, so the Pi can keep itself powered
+  Modify `/boot/firmware/config.txt`, adding this line at the end:
+  ```bash
+  dtoverlay=gpio-poweroff,gpiopin=4,active_delay_ms=5000,inactive_delay_ms=1000,active_low=1
+  ```
+  This enables the Pi to keep itself powered during normal operation
+  and switch itself off after poweroff. See the [schematic](#schematic) for details.
 
-Modify `/boot/firmware/config.txt`, adding this line at the end:
-```
-dtoverlay=gpio-poweroff,gpiopin=4,active_delay_ms=5000,inactive_delay_ms=1000,active_low=1
-```
-This enables the Pi to keep itself powered during normal operation
-and switch itself off after poweroff. See the [schematic](#schematic) for details.
+- Create the service user and its group:
+  ```bash
+  sudo adduser --system --no-create-home --group drempelbox --uid 1337
+  ```
 
-Create the service user and its group:
-`sudo adduser --system --no-create-home --group drempelbox --uid 1337`
+- Add the user to these system groups to give it the necessary permissions:
+  ```bash
+  sudo usermod -a -G gpio drempelbox
+  sudo usermod -a -G audio drempelbox
+  sudo usermod -a -G spi drempelbox
+  ```
 
-Add the user to these system groups to give it the necessary permissions:
-```bash
-sudo usermod -a -G gpio drempelbox
-sudo usermod -a -G audio drempelbox
-sudo usermod -a -G spi drempelbox
-```
+- Create a polkit rule to allow users of the drempelbox group to shutdown the system
 
-Create a polkit rule to allow the user to shutdown the system.
-Create the file `/etc/polkit-1/rules.d/40-allow-shutdown.rules` and add these contents:
-```
-/* Allow members of the drempelbox group to shutdown without authentication */
-polkit.addRule(function(action, subject) {
-   if ( ( action.id == "org.freedesktop.login1.power-off" ||
-          action.id == "org.freedesktop.login1.power-off-multiple-sessions"
-        ) && subject.isInGroup("drempelbox") ) {
-     polkit.log("Powering Off permitted for subject" + subject)
-     return polkit.Result.YES;
-   }
-});
-```
+  Copy [polkit/40-allow-shutdown-drempelbox.rules](polkit/40-allow-shutdown-drempelbox.rules) to `/etc/polkit-1/rules.d/40-allow-shutdown-drempelbox.rules`
 
-Restart the system or the polkit service for the changes to take effect:
-```bash
-systemctl restart polkit.service
-```
+- Create a polkit rule to allow users of the drempelbox group to manage wifi connections
+
+  Copy [polkit/42-network-drempelbox.rules](polkit/42-network-drempelbox.rules) to `/etc/polkit-1/rules.d/42-network-drempelbox.rules`
+
+  **Don't change the filenames, they are important!**
+
+- Restart the system or the polkit service for the changes to take effect:
+  ```bash
+  systemctl restart polkit.service
+  ```
+
+**If you didn't reboot the system, you need to logout and in so group memberships are applied correctly!**
 
 ## Hardware
 

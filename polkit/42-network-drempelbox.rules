@@ -1,0 +1,10 @@
+/* Allow members of the drempelbox group to modify wifi connections */
+polkit.addRule(function(action, subject) {
+  if ( ( action.id == "org.freedesktop.NetworkManager.network-control" ||
+         action.id == "org.freedesktop.NetworkManager.settings.modify.system" ||
+         action.id == "org.freedesktop.NetworkManager.wifi.scan")
+        && subject.isInGroup("drempelbox")) {
+    polkit.log("permitting action= for subject=" + action, subject);
+    return polkit.Result.YES;
+  }
+});
