@@ -81,8 +81,8 @@ fn connect_to_ap(
 }
 
 pub async fn connect_wifi() -> Result<(), Box<dyn std::error::Error>> {
-    const SSID: &str = "";
-    const PW: &str = ""; // TODO: get these via AP post req and/or NFC tag!
+    const SSID: &str = "wpd";
+    const PW: &str = "0987654321"; // TODO: get these via AP post req and/or NFC tag!
 
     let manager = NetworkManager::new();
 
