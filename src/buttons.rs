@@ -14,9 +14,12 @@ enum VolumePins {
 }
 
 impl VolumeButton {
+    const VOLUME_UP_PIN: u8 = 17;
+    const VOLUME_DOWN_PIN: u8 = 17;
+    
     pub async fn new(join_set: &mut JoinSet<()>) -> Result<Self, Error> {
-        let volume_up = VolumePins::UP(17);
-        let volume_down = VolumePins::DOWN(27);
+        let volume_up = VolumePins::UP(Self::VOLUME_UP_PIN);
+        let volume_down = VolumePins::DOWN(Self::VOLUME_DOWN_PIN);
         Self::button_action(join_set, volume_up);
         Self::button_action(join_set, volume_down);
         Ok(Self {})
