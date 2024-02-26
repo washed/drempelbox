@@ -42,10 +42,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let _shutdown = Shutdown::new(&mut join_set).await?;
     
-    let _volume_button = VolumeButton::new(&mut join_set).await?;
-
     let (sender, receiver) = mpsc::channel::<PlayerRequestMessage>(16);
     let app_state = AppState { sender, amp };
+
+
+    let _volume_button = VolumeButton::new(&mut join_set, app_state.clone()).await?;
 
     start_player_task(&mut join_set, receiver, amp_player).await?;
     start_ntag_reader_task(&mut join_set, app_state.clone()).await;
