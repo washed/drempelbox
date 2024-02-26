@@ -25,8 +25,8 @@ struct Volume {
 
 
 impl VolumeButton {
-    const VOLUME_UP_PIN: u8 = 17;
-    const VOLUME_DOWN_PIN: u8 = 27;
+    const VOLUME_UP_PIN: u8 = 27;
+    const VOLUME_DOWN_PIN: u8 = 17;
     const BUTTON_POLLING_INTERVAL_MILLIS: u64 = 100;
     const BUTTON_POLLING_MAX_COUNT: u32 = 2;
     
