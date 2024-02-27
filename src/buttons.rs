@@ -4,7 +4,7 @@ use std::time::Duration;
 use tokio::sync::oneshot;
 use tokio::task::JoinSet;
 use tokio::time::sleep;
-use tracing::{error, info, debug};
+use tracing::{debug, error, info};
 
 use crate::{player::PlayerRequestMessage, server::AppState};
 
@@ -22,14 +22,12 @@ struct Volume {
     volume: f64,
 }
 
-
-
 impl VolumeButton {
     const VOLUME_UP_PIN: u8 = 27;
     const VOLUME_DOWN_PIN: u8 = 17;
     const BUTTON_POLLING_INTERVAL_MILLIS: u64 = 100;
     const BUTTON_POLLING_MAX_COUNT: u32 = 2;
-    
+
     pub async fn new(join_set: &mut JoinSet<()>, app_state: AppState) -> Result<Self, Error> {
         let volume_up = VolumePins::UP(Self::VOLUME_UP_PIN);
         let volume_down = VolumePins::DOWN(Self::VOLUME_DOWN_PIN);
@@ -38,10 +36,12 @@ impl VolumeButton {
         Ok(Self {})
     }
 
-    async fn button_action(join_set: &mut JoinSet<()>, volume_pin: VolumePins, app_state: AppState) {
-        let (pin_nr, 
-             direction) 
-            = match volume_pin {
+    async fn button_action(
+        join_set: &mut JoinSet<()>,
+        volume_pin: VolumePins,
+        app_state: AppState,
+    ) {
+        let (pin_nr, direction) = match volume_pin {
             VolumePins::UP(nr) => (nr, "Up"),
             VolumePins::DOWN(nr) => (nr, "Down"),
         };
@@ -86,7 +86,7 @@ impl VolumeButton {
                             }
                         }
                         sleep(Duration::from_millis(Self::BUTTON_POLLING_INTERVAL_MILLIS)).await;
-                    }   
+                    }
                 });
             }
             Err(e) => {
@@ -96,9 +96,7 @@ impl VolumeButton {
     }
 
     fn get_pin(pin_nr: u8) -> Result<InputPin, Error> {
-        let pin: InputPin = Gpio::new()?
-            .get(pin_nr)?
-            .into_input_pullup();
+        let pin: InputPin = Gpio::new()?.get(pin_nr)?.into_input_pullup();
         Ok(pin)
-    } 
+    }
 }
