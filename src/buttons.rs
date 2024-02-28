@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use rppal::gpio::{Error, Gpio, InputPin, Level};
 use serde::Serialize;
 use std::time::Duration;
@@ -20,6 +21,50 @@ enum VolumePins {
 #[derive(Serialize)]
 struct Volume {
     volume: f64,
+}
+
+#[async_trait]
+trait ButtonAction {
+    async fn action(app_state: AppState);
+}
+
+struct VolumeUp {}
+struct VolumeDown {}
+
+#[async_trait]
+impl ButtonAction for VolumeUp {
+    async fn action(app_state: AppState) {
+        info!("Volume up!");
+        let (sender, receiver) = oneshot::channel::<f64>();
+        let player_request_message = PlayerRequestMessage::VolumeUp { responder: sender };
+
+        match app_state.sender.send(player_request_message).await {
+            Ok(_) => debug!("Submitted volume up request."),
+            Err(e) => error!("Error submitting volume up request: {e}"),
+        };
+        match receiver.await {
+            Ok(response) => debug!("Player acknowledged volume up command: {response}."),
+            Err(_) => error!("didn't receive player command response"),
+        }
+    }
+}
+
+#[async_trait]
+impl ButtonAction for VolumeDown {
+    async fn action(app_state: AppState) {
+        info!("Volume down!");
+        let (sender, receiver) = oneshot::channel::<f64>();
+        let player_request_message = PlayerRequestMessage::VolumeDown { responder: sender };
+
+        match app_state.sender.send(player_request_message).await {
+            Ok(_) => debug!("Submitted volume down request."),
+            Err(e) => error!("Error submitting volume down request: {e}"),
+        };
+        match receiver.await {
+            Ok(response) => debug!("Player acknowledged volume down command: {response}."),
+            Err(_) => error!("didn't receive player command response"),
+        }
+    }
 }
 
 impl VolumeButton {
@@ -49,7 +94,10 @@ impl VolumeButton {
         match Self::get_pin(pin_nr) {
             Ok(pin) => {
                 join_set.spawn(async move {
-                    info!("Volume {:?}  button task on pin {} started!", direction, pin_nr);
+                    info!(
+                        "Volume {:?}  button task on pin {} started!",
+                        direction, pin_nr
+                    );
                     let mut change_count = 0;
                     loop {
                         match pin.read() {
@@ -58,28 +106,17 @@ impl VolumeButton {
                                 change_count = 0;
                             }
                             Level::Low => {
-                               debug!("{:?} button {} pressed", direction, pin.pin());
-                               if change_count < Self::BUTTON_POLLING_MAX_COUNT {
+                                debug!("{:?} button {} pressed", direction, pin.pin());
+                                if change_count < Self::BUTTON_POLLING_MAX_COUNT {
                                     change_count += 1;
                                 } else if change_count == Self::BUTTON_POLLING_MAX_COUNT {
-                                    info!("Volume {}!", direction);
-                                    let (sender, receiver) = oneshot::channel::<f64>();
-                                    let player_request_message = match volume_pin {
-                                        // I don't like having to match again here, but I can't
-                                        // move it out because PlayerRequestMessage isn't clonable
-                                        VolumePins::UP(_) => PlayerRequestMessage::VolumeUp { responder: sender },
-                                        VolumePins::DOWN(_) => PlayerRequestMessage::VolumeDown { responder: sender },
-                                    };
-                                    match app_state
-                                        .sender
-                                        .send(player_request_message)
-                                        .await {
-                                            Ok(_) => debug!("Submitted volume {direction} request."),
-                                            Err(e) => error!("Error submitting volume {direction} request: {e}")
-                                        };
-                                    match receiver.await {
-                                        Ok(response) => debug!("Player acknowledged volume {direction} command: {response}."),
-                                        Err(_) => error!("didn't receive player command response")
+                                    match volume_pin {
+                                        VolumePins::UP(_) => {
+                                            VolumeUp::action(app_state.clone()).await
+                                        }
+                                        VolumePins::DOWN(_) => {
+                                            VolumeDown::action(app_state.clone()).await
+                                        }
                                     };
                                     change_count = 0;
                                 }
