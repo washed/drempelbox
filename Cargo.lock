@@ -871,7 +871,6 @@ name = "drempelbox"
 version = "0.1.0"
 dependencies = [
  "async-std",
- "async-trait",
  "axum",
  "bitflags 2.4.1",
  "chrono",
