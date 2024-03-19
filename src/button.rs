@@ -11,8 +11,8 @@ pub struct Button {
 }
 
 impl Button {
-    const BUTTON_POLLING_MAX_COUNT: u64 = 2;
-    const BUTTON_POLLING_INTERVAL_MILLIS: u64 = 1000;
+    const BUTTON_POLLING_MAX_COUNT: u64 = 10;
+    const BUTTON_POLLING_INTERVAL_MILLIS: u64 = 10;
     const EVENT_CHANNEL_CAPACITY: usize = 16;
 
     pub fn new(pin_number: u8) -> Result<Self, Error> {
