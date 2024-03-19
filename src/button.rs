@@ -33,12 +33,12 @@ impl Button {
                         match change_count.cmp(&Self::BUTTON_POLLING_MAX_COUNT) {
                             Less => change_count += 1,
                             Equal | Greater => {
-                                match sender.send(()) {
-                                    Ok(_) => {}
-                                    Err(_e) => {
-                                        error!("error sending button event message")
-                                    }
-                                }
+                                let _ =
+                                    sender
+                                        .send(())
+                                        .map_err(|e: broadcast::error::SendError<()>| {
+                                            error!("error sending button event message: {}", e)
+                                        });
                                 change_count = 0;
                             }
                         }
