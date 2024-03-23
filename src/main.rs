@@ -28,6 +28,10 @@ use crate::amp::Amp;
 pub mod shutdown;
 use crate::shutdown::Shutdown;
 
+pub mod button;
+pub mod volume_buttons;
+use crate::volume_buttons::VolumeButtons;
+
 #[tokio::main()]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
@@ -41,6 +45,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let (sender, receiver) = mpsc::channel::<PlayerRequestMessage>(16);
     let app_state = AppState { sender, amp };
+
+    let _volume_button = VolumeButtons::new(app_state.clone().sender)?;
 
     start_player_task(&mut join_set, receiver, amp_player).await?;
     start_ntag_reader_task(&mut join_set, app_state.clone()).await;

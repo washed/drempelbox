@@ -47,3 +47,9 @@ ecad/#auto_saved_files#
 
 # Ignore .envrc
 **/.envrc
+
+# Ignore my custom env file
+dev.env
+
+# Ignore Vim temp files
+*~
