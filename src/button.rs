@@ -1,50 +1,54 @@
-use rppal::gpio::{Error, Gpio, InputPin, Level};
+#![allow(unused_imports)]
+
+use debounce::EventDebouncer;
+use rppal::gpio::{Error, Gpio, InputPin, Level, Trigger};
 use std::cmp::Ordering::{Equal, Greater, Less};
 use std::time::Duration;
 use tokio::spawn;
 use tokio::sync::broadcast;
-use tokio::time::sleep;
 use tracing::{debug, error, info};
 
 pub struct Button {
-    pub receiver: broadcast::Receiver<()>,
+    pub receiver: broadcast::Receiver<Level>,
+    _pin: InputPin,
 }
 
 impl Button {
-    const BUTTON_POLLING_MAX_COUNT: u64 = 10;
-    const BUTTON_POLLING_INTERVAL_MILLIS: u64 = 10;
     const EVENT_CHANNEL_CAPACITY: usize = 16;
+    const BUTTON_PRESSED_DURATION_MS: u64 = 100;
 
     pub fn new(pin_number: u8) -> Result<Self, Error> {
-        let pin: InputPin = Gpio::new()?.get(pin_number)?.into_input_pullup();
+        let mut pin: InputPin = Gpio::new()?.get(pin_number)?.into_input_pullup();
+        let trigger: Trigger = Trigger::Both;
         let (sender, receiver) = broadcast::channel(Self::EVENT_CHANNEL_CAPACITY);
-        spawn(async move {
-            info!(pin=?pin, "button poll task on pin {:?} started", pin);
-            let mut change_count = 0;
-            loop {
-                match pin.read() {
-                    Level::High => {
-                        debug!("button at pin {:?} not pressed", pin);
-                        change_count = 0;
-                    }
-                    Level::Low => {
-                        debug!("button at pin {:?} pressed", pin);
+        let pin_name = pin.pin();
 
-                        match change_count.cmp(&Self::BUTTON_POLLING_MAX_COUNT) {
-                            Less => change_count += 1,
-                            Equal | Greater => {
-                                if let Err(e) = sender.send(()) {
-                                    error!("error sending button event message: {}", e)
-                                }
-                                change_count = 0;
-                            }
-                        }
-                    }
-                }
-                sleep(Duration::from_millis(Self::BUTTON_POLLING_INTERVAL_MILLIS)).await;
+        let debounce_delay = Duration::from_millis(Button::BUTTON_PRESSED_DURATION_MS);
+        let debouncer = EventDebouncer::new(debounce_delay, move |level: Level| {
+            info!(
+                pin_name=?pin_name,
+                level=?level,
+                "pin {pin_name} debounced level {level}"
+            );
+            if let Err(e) = sender.send(level) {
+                error!("error sending button event message: {}", e)
             }
         });
 
-        Ok(Self { receiver })
+        if let Err(e) = pin.set_async_interrupt(trigger, move |level: Level| {
+            debug!(
+                pin_name=?pin_name,
+                trigger=?trigger, level=?level,
+                "pin {pin_name} triggered on {trigger} level {level}"
+            );
+            debouncer.put(level);
+        }) {
+            error!("Error setting interrupt: {}", e);
+        }
+
+        Ok(Self {
+            receiver,
+            _pin: pin,
+        })
     }
 }
