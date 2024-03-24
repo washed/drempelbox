@@ -1,6 +1,6 @@
 use crate::button::Button;
 use crate::player::PlayerRequestMessage;
-use rppal::gpio::Error;
+use rppal::gpio::{Error, Level};
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 use tokio::{select, spawn};
@@ -18,8 +18,8 @@ impl VolumeButtons {
         spawn(async move {
             loop {
                 select! {
-                    Ok(_) = button_up.receiver.recv() => Self::volume_up(&player_sender).await,
-                    Ok(_) = button_down.receiver.recv() => Self::volume_down(&player_sender).await,
+                    Ok(Level::Low) = button_up.receiver.recv() => Self::volume_up(&player_sender).await,
+                    Ok(Level::Low) = button_down.receiver.recv() => Self::volume_down(&player_sender).await,
                 }
             }
         });
