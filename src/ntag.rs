@@ -4,9 +4,12 @@ use crate::player::PlayerRequestMessage;
 use crate::server::AppState;
 use crate::tuple_windows::TupleWindowsExt;
 use async_std::sync::Arc;
-use linux_embedded_hal::spidev::{SpiModeFlags, SpidevOptions};
-use linux_embedded_hal::Spidev;
-use mfrc522::comm::eh02::spi::SpiInterface;
+use dummy_pin::DummyPin;
+use embedded_hal_bus::spi::ExclusiveDevice;
+use hal::spidev::{SpiModeFlags, SpidevOptions};
+use hal::{Delay, SpidevBus};
+use linux_embedded_hal as hal;
+use mfrc522::comm::blocking::spi::SpiInterface;
 use mfrc522::Mfrc522;
 use tokio::sync::Mutex;
 use tokio::task::JoinSet;
@@ -28,12 +31,15 @@ async fn start_ntag_reader_task_impl(
     app_state: AppState,
 ) -> Result<(), Box<dyn std::error::Error>> {
     info!("Starting NTAG reader...");
-    let mut spi = Spidev::open("/dev/spidev0.0")?;
+    let mut bus = SpidevBus::open("/dev/spidev0.0").unwrap();
     let options = SpidevOptions::new()
         .max_speed_hz(1_000_000)
-        .mode(SpiModeFlags::SPI_MODE_0)
+        .mode(SpiModeFlags::SPI_MODE_0 | SpiModeFlags::SPI_NO_CS)
         .build();
-    spi.configure(&options)?;
+    bus.configure(&options).unwrap();
+
+    let dummy_cs_pin = DummyPin::new_low();
+    let spi = ExclusiveDevice::new(bus, dummy_cs_pin, Delay)?;
 
     let itf = SpiInterface::new(spi);
     let mfrc522 = Mfrc522::new(itf).init()?;

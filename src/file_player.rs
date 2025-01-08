@@ -1,10 +1,12 @@
 use async_std::sync::Arc;
-use librespot::playback::mixer::{self, VolumeGetter};
+use librespot::playback::mixer::VolumeGetter;
 use rodio::{Decoder, OutputStream, Sink};
 use std::fs::File;
 use std::io::BufReader;
 use tokio::sync::Mutex; // this is more expensive than std::sync::Mutex but makes using it across awaits easier
 use tracing::info;
+
+use crate::player::Mixer;
 
 pub struct FilePlayer {
     sink: Arc<Mutex<Sink>>,
@@ -13,14 +15,11 @@ pub struct FilePlayer {
 }
 
 impl FilePlayer {
-    pub async fn new(
-        mixer: Arc<Mutex<Box<dyn mixer::Mixer>>>,
-    ) -> Result<FilePlayer, Box<dyn std::error::Error>> {
+    pub async fn new(mixer: Mixer) -> Result<FilePlayer, Box<dyn std::error::Error>> {
         let (_stream, stream_handle) = OutputStream::try_default()?;
         let sink = Sink::try_new(&stream_handle)?;
         let sink = Arc::new(Mutex::new(sink));
 
-        let mixer = mixer.lock().await;
         let volume_getter = mixer.get_soft_volume();
 
         Ok(Self {

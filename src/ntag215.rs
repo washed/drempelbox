@@ -1,12 +1,15 @@
 use crate::ndef::Message;
-use linux_embedded_hal::Spidev;
+use dummy_pin::DummyPin;
+use embedded_hal_bus::spi::ExclusiveDevice;
+use linux_embedded_hal::{Delay, SpidevBus};
 use mfrc522::{
-    comm::eh02::spi::{DummyDelay, DummyNSS, SpiInterface},
+    comm::blocking::spi::{DummyDelay, SpiInterface},
     Initialized, Mfrc522, Uid,
 };
 
 pub struct NTAG215 {
-    pub mfrc522: Mfrc522<SpiInterface<Spidev, DummyNSS, DummyDelay>, Initialized>,
+    pub mfrc522:
+        Mfrc522<SpiInterface<ExclusiveDevice<SpidevBus, DummyPin, Delay>, DummyDelay>, Initialized>,
     pub memory: [u8; NTAG215::TOTAL_BYTES_COUNT],
 }
 
@@ -63,7 +66,10 @@ impl NTAG215 {
     pub const RFUI_1_END: usize = 535;
 
     pub fn new(
-        mut mfrc522: Mfrc522<SpiInterface<Spidev, DummyNSS, DummyDelay>, Initialized>,
+        mut mfrc522: Mfrc522<
+            SpiInterface<ExclusiveDevice<SpidevBus, DummyPin, Delay>, DummyDelay>,
+            Initialized,
+        >,
     ) -> Self {
         let vers = mfrc522.version().expect("Error getting MFRC522 version");
         assert!(vers == 0x91 || vers == 0x92);

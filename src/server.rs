@@ -45,9 +45,9 @@ async fn start_server(app_state: AppState) -> Result<(), Box<dyn std::error::Err
         .unwrap_or(String::from("0.0.0.0:3000"))
         .parse()?;
 
-    axum::Server::bind(&bind_address)
-        .serve(app.into_make_service())
-        .await?;
+    let listener = tokio::net::TcpListener::bind(bind_address).await.unwrap();
+
+    axum::serve(listener, app).await?;
 
     Ok(())
 }

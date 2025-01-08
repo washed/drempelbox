@@ -6,29 +6,31 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-mfrc522 = { version = "0.6.0", features = ["std"] }
-linux-embedded-hal = "0.3.2"
-embedded-hal = "0.2.7"
-itertools = "0.11.0"
-bitflags = "2.4.0"
+mfrc522 = { version = "0.8.0", features = ["std"] }
+linux-embedded-hal = "0.4.0"
+embedded-hal = "1.0.0"
+itertools = "0.14.0"
+bitflags = "2.6.0"
 tokio = { version = "1", features = ["full"] }
-chrono = "0.4.31"
-axum = { version = "0.6.20", features = ["headers", "macros", "query"] }
+chrono = "0.4.39"
+axum = { version = "0.8.1", features = ["macros", "query"] }
 futures = "0.3"
-tokio-stream = { version = "0.1.14", features = ["sync"] }
-serde = { version = "1.0.188", features = ["derive"] }
-serde_json = "1.0.107"
-rodio = "0.17.1"
+tokio-stream = { version = "0.1.17", features = ["sync"] }
+serde = { version = "1.0.217", features = ["derive"] }
+serde_json = "1.0.135"
+rodio = "0.20.1"
 tracing = "0.1"
 tracing-subscriber = "0.3"
-url = "2.4.1"
-librespot = "0.4.2"
-librespot-core = "0.4.2"
-librespot-discovery = "0.4.2"
+url = "2.5.4"
+librespot = "0.6.0"
+librespot-core = "0.6.0"
+librespot-discovery = "0.6.0"
 sha1 = "0.10.6"
 hex = "0.4.3"
-async-std = { version = "1.12.0", features = ["tokio1"] }
-pin-project-lite = "0.2.13"
-percent-encoding = "2.3.0"
-rppal = "0.16.1"
+async-std = { version = "1.13.0", features = ["tokio1"] }
+pin-project-lite = "0.2.16"
+percent-encoding = "2.3.1"
+rppal = "0.22.1"
 system_shutdown = "4.0.1"
+embedded-hal-bus = { version = "0.2.0", features = ["async", "std"] }
+dummy-pin = "1.0.0"
