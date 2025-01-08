@@ -1,5 +1,5 @@
 # base pre-built cross image
-ARG CROSS_BASE_IMAGE
+ARG CROSS_BASE_IMAGE=x86_64-unknown-linux-gnu
 FROM $CROSS_BASE_IMAGE
 
 ARG CROSS_DEB_ARCH
