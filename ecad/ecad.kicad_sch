@@ -7741,6 +7741,17 @@
 		)
 		(uuid "8cecad9a-004e-463c-a084-45b5a7a023fb")
 	)
+	(text "Couldn't find a\nWald&Wiesen LED\nin the library..."
+		(exclude_from_sim no)
+		(at 51.308 171.704 0)
+		(effects
+			(font
+				(size 0.8 0.8)
+			)
+			(justify left bottom)
+		)
+		(uuid "98a86708-67a1-402f-985f-755a11ed482f")
+	)
 	(text "We need some clarification which grounds\nare connected on the amp board"
 		(exclude_from_sim no)
 		(at 226.06 80.01 0)
@@ -7773,6 +7784,17 @@
 			(justify left bottom)
 		)
 		(uuid "c6cbe795-4e91-4479-820b-cc74e632443b")
+	)
+	(text "Assuming white LED\nwith 4V/10mA flux\nvoltage and current"
+		(exclude_from_sim no)
+		(at 48.514 162.814 0)
+		(effects
+			(font
+				(size 0.8 0.8)
+			)
+			(justify left bottom)
+		)
+		(uuid "ef104ed2-a539-401f-a046-1541f6a90684")
 	)
 	(global_label "AMP_SD_PI"
 		(shape input)
