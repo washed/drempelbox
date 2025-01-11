@@ -1811,6 +1811,188 @@
 				)
 			)
 		)
+		(symbol "LED:LD271"
+			(pin_numbers hide)
+			(pin_names
+				(offset 1.016) hide)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "D"
+				(at 0.508 1.778 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Value" "LD271"
+				(at -1.016 -2.794 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" "LED_THT:LED_D5.0mm_IRGrey"
+				(at 0 4.445 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "http://www.alliedelec.com/m/d/40788c34903a719969df15f1fbea1056.pdf"
+				(at -1.27 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "940nm IR-LED, 5mm"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "IR LED"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_fp_filters" "LED*5.0mm*IRGrey*"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "LD271_0_1"
+				(polyline
+					(pts
+						(xy -2.54 1.27) (xy -2.54 -1.27)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0 0) (xy -2.54 0)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0.381 3.175) (xy -0.127 3.175)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -1.143 1.651) (xy 0.381 3.175) (xy 0.381 2.667)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0 -1.27) (xy -2.54 0) (xy 0 1.27) (xy 0 -1.27)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -2.413 1.651) (xy -0.889 3.175) (xy -0.889 2.667) (xy -0.889 3.175) (xy -1.397 3.175)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "LD271_1_1"
+				(pin passive line
+					(at -5.08 0 0)
+					(length 2.54)
+					(name "K"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 2.54 0 180)
+					(length 2.54)
+					(name "A"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+		)
 		(symbol "Switch:SW_DPST"
 			(pin_names
 				(offset 0) hide)
@@ -5704,7 +5886,7 @@
 	)
 	(wire
 		(pts
-			(xy 62.23 147.32) (xy 62.23 137.16)
+			(xy 60.96 147.32) (xy 60.96 137.16)
 		)
 		(stroke
 			(width 0)
@@ -5714,7 +5896,7 @@
 	)
 	(wire
 		(pts
-			(xy 62.23 137.16) (xy 54.61 137.16)
+			(xy 60.96 137.16) (xy 54.61 137.16)
 		)
 		(stroke
 			(width 0)
@@ -5911,6 +6093,16 @@
 			(type default)
 		)
 		(uuid "2515c5e1-3b5c-4411-893a-243963466e70")
+	)
+	(wire
+		(pts
+			(xy 41.91 153.67) (xy 41.91 157.48)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "26e12240-61e4-4294-8271-36f870d8d75b")
 	)
 	(wire
 		(pts
@@ -6234,7 +6426,7 @@
 	)
 	(wire
 		(pts
-			(xy 73.66 147.32) (xy 62.23 147.32)
+			(xy 60.96 147.32) (xy 73.66 147.32)
 		)
 		(stroke
 			(width 0)
@@ -6574,6 +6766,16 @@
 	)
 	(wire
 		(pts
+			(xy 59.69 181.61) (xy 63.5 181.61)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9abb89be-2dc8-47d8-a12f-4490d97417d9")
+	)
+	(wire
+		(pts
 			(xy 60.96 46.99) (xy 66.04 46.99)
 		)
 		(stroke
@@ -6674,6 +6876,16 @@
 	)
 	(wire
 		(pts
+			(xy 41.91 165.1) (xy 41.91 166.37)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "adfb304a-b49e-48d3-8941-287e195b64ce")
+	)
+	(wire
+		(pts
 			(xy 140.97 36.83) (xy 144.78 36.83)
 		)
 		(stroke
@@ -6741,6 +6953,16 @@
 			(type default)
 		)
 		(uuid "ba698e51-bfc5-4c0d-ac31-f4b2e56b4c73")
+	)
+	(wire
+		(pts
+			(xy 41.91 186.69) (xy 41.91 190.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ba9777ee-ccde-41b7-a8f2-0222d87829be")
 	)
 	(wire
 		(pts
@@ -6934,6 +7156,16 @@
 	)
 	(wire
 		(pts
+			(xy 41.91 173.99) (xy 41.91 176.53)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d45ca409-a25a-485d-9d89-e80277bf3aa1")
+	)
+	(wire
+		(pts
 			(xy 66.04 59.69) (xy 66.04 62.23)
 		)
 		(stroke
@@ -7041,6 +7273,16 @@
 			(type default)
 		)
 		(uuid "e109e100-fab3-4629-9a17-945db5484274")
+	)
+	(wire
+		(pts
+			(xy 49.53 181.61) (xy 52.07 181.61)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e13b36e1-0419-41b5-bc85-4bf11dcf667b")
 	)
 	(wire
 		(pts
@@ -7221,6 +7463,16 @@
 			(type default)
 		)
 		(uuid "eb862947-cc97-4b95-977e-27ca5eb1dc2f")
+	)
+	(wire
+		(pts
+			(xy 68.58 152.4) (xy 73.66 152.4)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "eb951b9a-ba2a-40b2-b1a4-eeb73c85bba5")
 	)
 	(wire
 		(pts
@@ -7411,6 +7663,17 @@
 			(type default)
 		)
 		(uuid "fdb33f06-92f0-48fc-84f4-98248053df9d")
+	)
+	(text "Status LED\nShould at some point indicate\noperational state (e.g., booting\nup, shutting down, bluetooth \npairing, no internet,...)"
+		(exclude_from_sim no)
+		(at 18.034 172.72 0)
+		(effects
+			(font
+				(size 0.8 0.8)
+			)
+			(justify left bottom)
+		)
+		(uuid "0fb3db85-1b96-4e07-9489-70c78c365ab4")
 	)
 	(text "It really ties the room acoustics together."
 		(exclude_from_sim no)
@@ -7885,6 +8148,28 @@
 			)
 		)
 	)
+	(global_label "STATUS_LED"
+		(shape input)
+		(at 68.58 152.4 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "ccb52e86-0113-407c-b5c3-ebd15985078e")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 54.4068 152.4 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+				(hide yes)
+			)
+		)
+	)
 	(global_label "~{RFID_RST}"
 		(shape input)
 		(at 120.65 148.59 0)
@@ -8057,6 +8342,28 @@
 					(size 1.27 1.27)
 				)
 				(justify right)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "STATUS_LED"
+		(shape input)
+		(at 63.5 181.61 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "f9699f58-217b-46be-873b-32035d500ddd")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 77.6732 181.61 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
 				(hide yes)
 			)
 		)
@@ -8596,6 +8903,76 @@
 			(project "ecad"
 				(path "/860b7f0e-7c1a-48cf-84ab-a41a24b3371c"
 					(reference "#PWR08")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "LED:LD271")
+		(at 41.91 168.91 90)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "26f950f2-cd60-4a4a-a561-3aa6db95f5c8")
+		(property "Reference" "D1"
+			(at 44.45 168.7829 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(property "Value" "LD271"
+			(at 44.45 171.3229 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(property "Footprint" "LED_THT:LED_D5.0mm_IRGrey"
+			(at 37.465 168.91 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "http://www.alliedelec.com/m/d/40788c34903a719969df15f1fbea1056.pdf"
+			(at 41.91 170.18 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "940nm IR-LED, 5mm"
+			(at 41.91 168.91 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "2"
+			(uuid "cfb40240-3dec-4fa2-afb2-90319c292fbf")
+		)
+		(pin "1"
+			(uuid "d6443272-3c81-44f0-b669-e133897c0a45")
+		)
+		(instances
+			(project ""
+				(path "/860b7f0e-7c1a-48cf-84ab-a41a24b3371c"
+					(reference "D1")
 					(unit 1)
 				)
 			)
@@ -9220,6 +9597,72 @@
 			(project "ecad"
 				(path "/860b7f0e-7c1a-48cf-84ab-a41a24b3371c"
 					(reference "Q1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+5V")
+		(at 41.91 153.67 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "3c0863b7-8cfa-4493-82fe-989858d45268")
+		(property "Reference" "#PWR041"
+			(at 41.91 157.48 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "+5V"
+			(at 41.91 148.59 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 41.91 153.67 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 41.91 153.67 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 41.91 153.67 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "fab01847-7009-4da9-b91d-53b7e34926a8")
+		)
+		(instances
+			(project "ecad"
+				(path "/860b7f0e-7c1a-48cf-84ab-a41a24b3371c"
+					(reference "#PWR041")
 					(unit 1)
 				)
 			)
@@ -10628,6 +11071,74 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:R")
+		(at 55.88 181.61 90)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "860d1ad9-a820-4a12-87b2-22e3dc8315ea")
+		(property "Reference" "R8"
+			(at 55.88 175.26 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "30k"
+			(at 55.88 177.8 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 55.88 183.388 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 55.88 181.61 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 55.88 181.61 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "1c8dd059-194f-41c0-ad90-ec657b6b5ba9")
+		)
+		(pin "2"
+			(uuid "d6d6b2c8-0513-4caa-b483-4fdf8fd88d7e")
+		)
+		(instances
+			(project "ecad"
+				(path "/860b7f0e-7c1a-48cf-84ab-a41a24b3371c"
+					(reference "R8")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:VBUS")
 		(at 34.29 58.42 0)
 		(unit 1)
@@ -11110,6 +11621,76 @@
 			(project "ecad"
 				(path "/860b7f0e-7c1a-48cf-84ab-a41a24b3371c"
 					(reference "U1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 41.91 161.29 180)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "a1207b72-afd7-4850-988b-addbcd24aabd")
+		(property "Reference" "R7"
+			(at 44.45 160.02 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(property "Value" "100"
+			(at 44.45 162.56 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(property "Footprint" ""
+			(at 43.688 161.29 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 41.91 161.29 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 41.91 161.29 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "06191b06-d5f2-424e-95d9-d3b77a19daad")
+		)
+		(pin "2"
+			(uuid "5375d0ae-7653-428e-96da-eb309f659243")
+		)
+		(instances
+			(project "ecad"
+				(path "/860b7f0e-7c1a-48cf-84ab-a41a24b3371c"
+					(reference "R7")
 					(unit 1)
 				)
 			)
@@ -11722,6 +12303,72 @@
 		)
 	)
 	(symbol
+		(lib_id "power:GNDD")
+		(at 41.91 190.5 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "c396e501-8dd9-453a-9d05-23660ec53c8b")
+		(property "Reference" "#PWR039"
+			(at 41.91 196.85 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GNDD"
+			(at 41.91 194.31 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 41.91 190.5 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 41.91 190.5 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 41.91 190.5 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "ceccd4fe-4c7e-4da1-856e-a503f604ac27")
+		)
+		(instances
+			(project "ecad"
+				(path "/860b7f0e-7c1a-48cf-84ab-a41a24b3371c"
+					(reference "#PWR039")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:GND")
 		(at 99.06 39.37 0)
 		(unit 1)
@@ -11981,6 +12628,82 @@
 			(project "ecad"
 				(path "/860b7f0e-7c1a-48cf-84ab-a41a24b3371c"
 					(reference "#PWR030")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Transistor_BJT:BC547")
+		(at 44.45 181.61 0)
+		(mirror y)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "d65b3565-40f0-48a8-b9f8-fd46fd18263c")
+		(property "Reference" "Q2"
+			(at 39.37 180.3399 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "BC547"
+			(at 39.37 182.8799 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Package_TO_SOT_THT:TO-92_Inline"
+			(at 39.37 183.515 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+					(italic yes)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "https://www.onsemi.com/pub/Collateral/BC550-D.pdf"
+			(at 44.45 181.61 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+		(property "Description" "0.1A Ic, 45V Vce, Small Signal NPN Transistor, TO-92"
+			(at 44.45 181.61 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "3"
+			(uuid "19fb5edb-f970-4c0d-9ca0-c5894507acac")
+		)
+		(pin "1"
+			(uuid "3bbb771a-730c-46ae-86ec-955d4ad9487e")
+		)
+		(pin "2"
+			(uuid "1b06f821-6931-473b-945f-1627db79f0d0")
+		)
+		(instances
+			(project ""
+				(path "/860b7f0e-7c1a-48cf-84ab-a41a24b3371c"
+					(reference "Q2")
 					(unit 1)
 				)
 			)
