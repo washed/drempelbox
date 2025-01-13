@@ -11,6 +11,7 @@ use hal::{Delay, SpidevBus};
 use linux_embedded_hal as hal;
 use mfrc522::comm::blocking::spi::SpiInterface;
 use mfrc522::Mfrc522;
+use rppal::gpio::{Error, Gpio, OutputPin};
 use tokio::sync::Mutex;
 use tokio::task::JoinSet;
 use tokio::time::{sleep, Duration};
@@ -26,6 +27,16 @@ pub async fn start_ntag_reader_task(join_set: &mut JoinSet<()>, app_state: AppSt
     }
 }
 
+fn delay() {
+    std::thread::sleep(Duration::from_nanos(50));
+}
+
+fn get_pin_reset() -> Result<OutputPin, Error> {
+    let mut pin: OutputPin = Gpio::new()?.get(25)?.into_output();
+    pin.set_low();
+    Ok(pin)
+}
+
 async fn start_ntag_reader_task_impl(
     join_set: &mut JoinSet<()>,
     app_state: AppState,
@@ -34,15 +45,23 @@ async fn start_ntag_reader_task_impl(
     let mut bus = SpidevBus::open("/dev/spidev0.0").unwrap();
     let options = SpidevOptions::new()
         .max_speed_hz(1_000_000)
-        .mode(SpiModeFlags::SPI_MODE_0 | SpiModeFlags::SPI_NO_CS)
+        .mode(SpiModeFlags::SPI_MODE_0)
         .build();
     bus.configure(&options).unwrap();
 
     let dummy_cs_pin = DummyPin::new_low();
     let spi = ExclusiveDevice::new(bus, dummy_cs_pin, Delay)?;
+    let itf = SpiInterface::new(spi).with_delay(delay);
 
-    let itf = SpiInterface::new(spi);
+    let mut reset_pin = get_pin_reset()?;
+    sleep(Duration::from_micros(50)).await;
+
+    reset_pin.set_high();
+    sleep(Duration::from_micros(50)).await;
+
     let mfrc522 = Mfrc522::new(itf).init()?;
+    sleep(Duration::from_micros(100)).await;
+
     let ntag = Arc::new(Mutex::new(NTAG215::new(mfrc522)));
 
     let (tx, rx) = tokio::sync::mpsc::channel::<Option<[u8; 7]>>(16);
@@ -89,6 +108,7 @@ async fn start_ntag_reader_task_impl(
                 _ => {}
             };
         }
+        error!("ntag task ended");
     });
 
     let ntag_tx = ntag.clone();

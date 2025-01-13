@@ -2,31 +2,22 @@ use crate::ndef::Message;
 use dummy_pin::DummyPin;
 use embedded_hal_bus::spi::ExclusiveDevice;
 use linux_embedded_hal::{Delay, SpidevBus};
-use mfrc522::{
-    comm::blocking::spi::{DummyDelay, SpiInterface},
-    Initialized, Mfrc522, Uid,
-};
+use mfrc522::{comm::blocking::spi::SpiInterface, Initialized, Mfrc522, Uid};
+use tracing::info;
 
-pub struct NTAG215 {
-    pub mfrc522:
-        Mfrc522<SpiInterface<ExclusiveDevice<SpidevBus, DummyPin, Delay>, DummyDelay>, Initialized>,
-    pub memory: [u8; NTAG215::TOTAL_BYTES_COUNT],
-}
-
-impl NTAG215 {
+#[allow(dead_code)]
+mod constants {
     pub const PAGE_SIZE_BYTES: usize = 4;
     pub const BLOCK_SIZE_BYTES: usize = 16;
-    pub const BLOCK_PAGE_OFFSET: usize = NTAG215::BLOCK_SIZE_BYTES / NTAG215::PAGE_SIZE_BYTES;
+    pub const BLOCK_PAGE_OFFSET: usize = BLOCK_SIZE_BYTES / PAGE_SIZE_BYTES;
     pub const PAGE_COUNT: usize = 135;
-    pub const TOTAL_BYTES_COUNT: usize = NTAG215::PAGE_COUNT * NTAG215::PAGE_SIZE_BYTES;
-    pub const FULL_BLOCK_COUNT: usize =
-        NTAG215::PAGE_COUNT * NTAG215::PAGE_SIZE_BYTES / NTAG215::BLOCK_SIZE_BYTES;
-    pub const PARTIAL_BLOCKS_PAGE_COUNT: usize =
-        (((NTAG215::PAGE_COUNT as f64 * NTAG215::PAGE_SIZE_BYTES as f64
-            / NTAG215::BLOCK_SIZE_BYTES as f64)
-            - NTAG215::FULL_BLOCK_COUNT as f64)
-            * NTAG215::BLOCK_SIZE_BYTES as f64
-            / NTAG215::PAGE_SIZE_BYTES as f64) as usize;
+    pub const TOTAL_BYTES_COUNT: usize = PAGE_COUNT * PAGE_SIZE_BYTES;
+    pub const FULL_BLOCK_COUNT: usize = PAGE_COUNT * PAGE_SIZE_BYTES / BLOCK_SIZE_BYTES;
+    pub const PARTIAL_BLOCKS_PAGE_COUNT: usize = (((PAGE_COUNT as f64 * PAGE_SIZE_BYTES as f64
+        / BLOCK_SIZE_BYTES as f64)
+        - FULL_BLOCK_COUNT as f64)
+        * BLOCK_SIZE_BYTES as f64
+        / PAGE_SIZE_BYTES as f64) as usize;
 
     // memory region offsets (ends are inclusive)
     pub const UID_START: usize = 0;
@@ -64,19 +55,28 @@ impl NTAG215 {
 
     pub const RFUI_1_START: usize = 534;
     pub const RFUI_1_END: usize = 535;
+}
 
+pub struct NTAG215<D: FnMut()> {
+    pub mfrc522: Mfrc522<SpiInterface<ExclusiveDevice<SpidevBus, DummyPin, Delay>, D>, Initialized>,
+    pub memory: [u8; constants::TOTAL_BYTES_COUNT],
+}
+
+impl<D: FnMut()> NTAG215<D> {
     pub fn new(
         mut mfrc522: Mfrc522<
-            SpiInterface<ExclusiveDevice<SpidevBus, DummyPin, Delay>, DummyDelay>,
+            SpiInterface<ExclusiveDevice<SpidevBus, DummyPin, Delay>, D>,
             Initialized,
         >,
     ) -> Self {
-        let vers = mfrc522.version().expect("Error getting MFRC522 version");
-        assert!(vers == 0x91 || vers == 0x92);
+        let version = mfrc522.version().expect("Error getting MFRC522 version");
+        info!(version, "MFRC522 version");
+
+        assert!(version == 0x91 || version == 0x92 || version == 0x18);
 
         Self {
             mfrc522,
-            memory: [0; NTAG215::TOTAL_BYTES_COUNT],
+            memory: [0; constants::TOTAL_BYTES_COUNT],
         }
     }
 
@@ -107,16 +107,16 @@ impl NTAG215 {
         self.select()?;
         self.read_blocks();
 
-        let user_memory = &self.memory[NTAG215::USER_MEMORY_START..NTAG215::USER_MEMORY_END];
+        let user_memory = &self.memory[constants::USER_MEMORY_START..constants::USER_MEMORY_END];
         let message = Message::parse(user_memory)?;
         Some(message)
     }
 
     fn read_blocks(&mut self) {
-        for (block_num, chunk) in (0..NTAG215::FULL_BLOCK_COUNT)
-            .zip(self.memory.chunks_exact_mut(NTAG215::BLOCK_SIZE_BYTES))
+        for (block_num, chunk) in (0..constants::FULL_BLOCK_COUNT)
+            .zip(self.memory.chunks_exact_mut(constants::BLOCK_SIZE_BYTES))
         {
-            let page_addr = block_num * NTAG215::BLOCK_PAGE_OFFSET;
+            let page_addr = block_num * constants::BLOCK_PAGE_OFFSET;
             if let Ok(block) = self
                 .mfrc522
                 .mf_read(u8::try_from(page_addr).expect("Tried to read out of bound block!"))
@@ -127,14 +127,14 @@ impl NTAG215 {
             }
         }
 
-        if NTAG215::PARTIAL_BLOCKS_PAGE_COUNT != 0 {
-            let page_addr = NTAG215::FULL_BLOCK_COUNT * NTAG215::BLOCK_PAGE_OFFSET;
+        if constants::PARTIAL_BLOCKS_PAGE_COUNT != 0 {
+            let page_addr = constants::FULL_BLOCK_COUNT * constants::BLOCK_PAGE_OFFSET;
             if let Ok(partial_block) = self
                 .mfrc522
                 .mf_read(u8::try_from(page_addr).expect("Tried to read out of bound block!"))
             {
                 for (dest, src) in self.memory
-                    [(NTAG215::FULL_BLOCK_COUNT * NTAG215::BLOCK_SIZE_BYTES)..]
+                    [(constants::FULL_BLOCK_COUNT * constants::BLOCK_SIZE_BYTES)..]
                     .iter_mut()
                     .zip(partial_block.iter())
                 {
