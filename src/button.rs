@@ -4,7 +4,7 @@ use std::time::Duration;
 use tokio::spawn;
 use tokio::sync::broadcast;
 use tokio::time::sleep;
-use tracing::{debug, error, info};
+use tracing::{error, info, trace};
 
 pub struct Button {
     pub receiver: broadcast::Receiver<()>,
@@ -24,11 +24,11 @@ impl Button {
             loop {
                 match pin.read() {
                     Level::High => {
-                        debug!("button at pin {:?} not pressed", pin);
+                        trace!("button at pin {:?} not pressed", pin);
                         change_count = 0;
                     }
                     Level::Low => {
-                        debug!("button at pin {:?} pressed", pin);
+                        trace!("button at pin {:?} pressed", pin);
 
                         match change_count.cmp(&Self::BUTTON_POLLING_MAX_COUNT) {
                             Less => change_count += 1,
