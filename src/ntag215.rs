@@ -72,7 +72,7 @@ impl<D: FnMut()> NTAG215<D> {
         let version = mfrc522.version().expect("Error getting MFRC522 version");
         info!(version, "MFRC522 version");
 
-        assert!(version == 0x91 || version == 0x92 || version == 0x18);
+        assert!(version == 0x91 || version == 0x92);
 
         Self {
             mfrc522,
