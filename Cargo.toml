@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-mfrc522 = { version = "0.8.0", features = ["std"] }
+mfrc522 = { version = "0.6.0", features = ["std"] }
 linux-embedded-hal = "0.4.0"
 embedded-hal = "1.0.0"
 itertools = "0.14.0"
@@ -30,7 +30,7 @@ hex = "0.4.3"
 async-std = { version = "1.13.0", features = ["tokio1"] }
 pin-project-lite = "0.2.16"
 percent-encoding = "2.3.1"
-rppal = "0.22.1"
+rppal = { version = "0.22.1", features = ["hal"] }
 system_shutdown = "4.0.1"
 embedded-hal-bus = { version = "0.2.0", features = ["async", "std"] }
 dummy-pin = "1.0.0"

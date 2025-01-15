@@ -1,9 +1,10 @@
 use crate::ndef::Message;
-use dummy_pin::DummyPin;
-use embedded_hal_bus::spi::ExclusiveDevice;
-use linux_embedded_hal::{Delay, SpidevBus};
-use mfrc522::{comm::blocking::spi::SpiInterface, Initialized, Mfrc522, Uid};
-use tracing::info;
+use mfrc522::{
+    comm::eh02::spi::{DummyNSS, SpiInterface},
+    Initialized, Mfrc522, Uid,
+};
+use rppal::spi::Spi;
+use tracing::{error, info};
 
 #[allow(dead_code)]
 mod constants {
@@ -58,17 +59,12 @@ mod constants {
 }
 
 pub struct NTAG215<D: FnMut()> {
-    pub mfrc522: Mfrc522<SpiInterface<ExclusiveDevice<SpidevBus, DummyPin, Delay>, D>, Initialized>,
+    pub mfrc522: Mfrc522<SpiInterface<Spi, DummyNSS, D>, Initialized>,
     pub memory: [u8; constants::TOTAL_BYTES_COUNT],
 }
 
 impl<D: FnMut()> NTAG215<D> {
-    pub fn new(
-        mut mfrc522: Mfrc522<
-            SpiInterface<ExclusiveDevice<SpidevBus, DummyPin, Delay>, D>,
-            Initialized,
-        >,
-    ) -> Self {
+    pub fn new(mut mfrc522: Mfrc522<SpiInterface<Spi, DummyNSS, D>, Initialized>) -> Self {
         let version = mfrc522.version().expect("Error getting MFRC522 version");
         info!(version, "MFRC522 version");
 
@@ -81,10 +77,10 @@ impl<D: FnMut()> NTAG215<D> {
     }
 
     pub fn select(&mut self) -> Option<Uid> {
-        let atqa = self.mfrc522.reqa().ok();
-        let atqa = match atqa {
-            Some(atqa) => Some(atqa),
-            None => {
+        let atqa = match self.mfrc522.reqa() {
+            Ok(atqa) => Some(atqa),
+            Err(e) => {
+                error!("error in SPI comms: {:#?}", e);
                 self.mfrc522.hlta().ok();
                 self.mfrc522.wupa().ok()
             }
