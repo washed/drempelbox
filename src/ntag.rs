@@ -6,7 +6,7 @@ use crate::tuple_windows::TupleWindowsExt;
 use async_std::sync::Arc;
 use mfrc522::comm::eh02::spi::SpiInterface;
 use mfrc522::Mfrc522;
-use rppal::gpio::{Error, Gpio, OutputPin};
+use rppal::gpio::Gpio;
 use rppal::spi::{Bus, Mode, SlaveSelect, Spi};
 use tokio::sync::Mutex;
 use tokio::task::JoinSet;
@@ -27,12 +27,6 @@ fn delay() {
     std::thread::sleep(Duration::from_nanos(50));
 }
 
-fn get_pin_reset() -> Result<OutputPin, Error> {
-    let mut pin: OutputPin = Gpio::new()?.get(25)?.into_output();
-    pin.set_low();
-    Ok(pin)
-}
-
 async fn start_ntag_reader_task_impl(
     join_set: &mut JoinSet<()>,
     app_state: AppState,
@@ -42,9 +36,14 @@ async fn start_ntag_reader_task_impl(
     let spi = Spi::new(Bus::Spi0, SlaveSelect::Ss0, 1_000_000, Mode::Mode0)?;
     let itf = SpiInterface::new(spi).with_delay(delay);
 
-    let mut reset_pin = get_pin_reset()?;
-    sleep(Duration::from_micros(50)).await;
+    let gpio = Gpio::new()?;
 
+    // Not used for now, but let's initialize it correctly
+    let _irq_pin = gpio.get(24)?.into_input_pullup();
+
+    // TODO: do we need to keep pin instances around to ensure their state remains stable?
+    let mut reset_pin = gpio.get(25)?.into_output_low();
+    sleep(Duration::from_micros(50)).await;
     reset_pin.set_high();
     sleep(Duration::from_micros(50)).await;
 
