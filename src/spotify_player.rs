@@ -7,6 +7,7 @@ use librespot::{
         session::Session,
         spotify_id::{SpotifyId, SpotifyItemType},
     },
+    discovery::{DeviceType, Discovery},
     metadata::Metadata,
     metadata::{Album, Artist, Playlist},
     playback::{
@@ -15,7 +16,6 @@ use librespot::{
         player::{Player, PlayerEvent},
     },
 };
-use librespot_discovery::DeviceType;
 use sha1::{Digest, Sha1};
 use std::sync::Arc;
 use std::{collections::VecDeque, env};
@@ -66,7 +66,7 @@ impl SpotifyPlayer {
         let device_id = hex::encode(Sha1::digest(name.as_bytes()));
         let client_id = device_id.clone();
 
-        let mut server = librespot_discovery::Discovery::builder(device_id, client_id)
+        let mut server = Discovery::builder(device_id, client_id)
             .name(name)
             .device_type(DeviceType::Computer)
             .launch()
