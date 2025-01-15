@@ -80,7 +80,9 @@ impl<D: FnMut()> NTAG215<D> {
         let atqa = match self.mfrc522.reqa() {
             Ok(atqa) => Some(atqa),
             Err(e) => {
-                error!("error in SPI comms: {:#?}", e);
+                if !matches!(e, mfrc522::error::Error::Timeout) {
+                    error!("error in SPI comms: {:#?}", e);
+                }
                 self.mfrc522.hlta().ok();
                 self.mfrc522.wupa().ok()
             }
