@@ -9,12 +9,14 @@ use tracing::{error, info};
 use url::Url;
 
 use crate::amp::Amp;
+use crate::led::Led;
 use crate::player::PlayerRequestMessage;
 
 #[derive(Clone)]
 pub struct AppState {
     pub sender: mpsc::Sender<PlayerRequestMessage>,
     pub amp: Amp,
+    pub led: Led,
 }
 
 pub async fn start_server_task(join_set: &mut JoinSet<()>, app_state: AppState) {
@@ -39,6 +41,8 @@ async fn start_server(app_state: AppState) -> Result<(), Box<dyn std::error::Err
         .route("/amp/off", post(amp_off))
         .route("/amp/power-on", post(amp_power_on))
         .route("/amp/power-off", post(amp_power_off))
+        .route("/led/led-on", post(led_on))
+        .route("/led/led-off", post(led_off))
         .with_state(app_state);
 
     let bind_address: std::net::SocketAddr = env::var("BIND_ADDRESS")
@@ -245,6 +249,40 @@ async fn amp_power_off(State(state): State<AppState>) -> impl IntoResponse {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json("error receiving amp power off command response"),
+            )
+                .into_response()
+        }
+    }
+}
+
+#[debug_handler]
+async fn led_on(State(state): State<AppState>) -> impl IntoResponse {
+    info!("Got LED on request");
+
+    match state.led.on().await {
+        Ok(_) => (StatusCode::OK).into_response(),
+        Err(_) => {
+            error!("didn't receive LED on command response");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json("error receiving LED on command response"),
+            )
+                .into_response()
+        }
+    }
+}
+
+#[debug_handler]
+async fn led_off(State(state): State<AppState>) -> impl IntoResponse {
+    info!("Got LED off request");
+
+    match state.led.off().await {
+        Ok(_) => (StatusCode::OK).into_response(),
+        Err(_) => {
+            error!("didn't receive LED off command response");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json("error receiving LED off command response"),
             )
                 .into_response()
         }

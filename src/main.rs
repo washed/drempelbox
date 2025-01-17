@@ -32,6 +32,9 @@ pub mod button;
 pub mod volume_buttons;
 use crate::volume_buttons::VolumeButtons;
 
+pub mod led;
+use crate::led::Led;
+
 #[tokio::main()]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
@@ -41,10 +44,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let amp = Amp::new(&mut join_set).await?;
     let amp_player = amp.clone();
 
+    let led = Led::new(&mut join_set).await?;
+
     let _shutdown = Shutdown::new(&mut join_set).await?;
 
     let (sender, receiver) = mpsc::channel::<PlayerRequestMessage>(16);
-    let app_state = AppState { sender, amp };
+    let app_state = AppState { sender, amp, led };
 
     let _volume_button = VolumeButtons::new(app_state.clone().sender)?;
 
