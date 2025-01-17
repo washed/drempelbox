@@ -5,18 +5,17 @@ use librespot::{
         cache::Cache,
         config::SessionConfig,
         session::Session,
-        spotify_id::{SpotifyAudioType, SpotifyId},
+        spotify_id::{SpotifyId, SpotifyItemType},
     },
+    discovery::{DeviceType, Discovery},
     metadata::Metadata,
     metadata::{Album, Artist, Playlist},
     playback::{
         audio_backend,
         config::{AudioFormat, PlayerConfig},
-        mixer,
         player::{Player, PlayerEvent},
     },
 };
-use librespot_discovery::DeviceType;
 use sha1::{Digest, Sha1};
 use std::sync::Arc;
 use std::{collections::VecDeque, env};
@@ -25,6 +24,8 @@ use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tracing::{error, info};
 use url::Url;
+
+use crate::player::Mixer;
 
 pub enum SpotifyPlayerCommand {
     PlayTracks(Vec<SpotifyId>),
@@ -37,9 +38,7 @@ pub struct SpotifyPlayer {
 }
 
 impl SpotifyPlayer {
-    pub async fn new(
-        mixer: Arc<Mutex<Box<dyn mixer::Mixer>>>,
-    ) -> Result<SpotifyPlayer, Box<dyn std::error::Error>> {
+    pub async fn new(mixer: Mixer) -> Result<SpotifyPlayer, Box<dyn std::error::Error>> {
         let (player_tx, player_rx) = unbounded_channel::<SpotifyPlayerCommand>();
 
         let (session, player, player_event_receiver) =
@@ -52,7 +51,6 @@ impl SpotifyPlayer {
             };
 
         let session = Arc::new(Mutex::new(session));
-        let player = Arc::new(Mutex::new(player));
 
         // TODO: consider keeping this around to enable us to check up on it
         let _task = SpotifyPlayer::run(player, player_rx, player_event_receiver);
@@ -66,8 +64,9 @@ impl SpotifyPlayer {
         info!("use authenticated spotify client to allow Drempelbox access");
         let name = "Drempelspot";
         let device_id = hex::encode(Sha1::digest(name.as_bytes()));
+        let client_id = device_id.clone();
 
-        let mut server = librespot_discovery::Discovery::builder(device_id)
+        let mut server = Discovery::builder(device_id, client_id)
             .name(name)
             .device_type(DeviceType::Computer)
             .launch()
@@ -80,22 +79,21 @@ impl SpotifyPlayer {
     }
 
     fn run(
-        player: Arc<Mutex<Player>>,
+        player: Arc<Player>,
         mut player_rx: UnboundedReceiver<SpotifyPlayerCommand>,
         mut player_event_receiver: UnboundedReceiver<PlayerEvent>,
     ) -> (JoinHandle<()>, JoinHandle<()>) {
-        let player_command_handler = player.clone();
-        let player_event_handler = player.clone();
-
         let tracks: Arc<Mutex<VecDeque<SpotifyId>>> = Arc::new(Mutex::new(VecDeque::new()));
         let tracks_command_handler = tracks.clone();
         let tracks_event_handler = tracks.clone();
+        let player_command = player.clone();
+        let player_event = player.clone();
 
         (
             tokio::spawn(async move {
+                let player = player_command.clone();
                 loop {
                     if let Some(command) = player_rx.recv().await {
-                        let mut player = player_command_handler.lock().await;
                         let mut tracks = tracks_command_handler.lock().await;
                         match command {
                             SpotifyPlayerCommand::PlayTracks(new_tracks) => {
@@ -118,9 +116,9 @@ impl SpotifyPlayer {
                 }
             }),
             tokio::spawn(async move {
+                let player = player_event.clone();
                 loop {
                     if let Some(player_event) = player_event_receiver.recv().await {
-                        let mut player = player_event_handler.lock().await;
                         let mut tracks = tracks_event_handler.lock().await;
 
                         match player_event {
@@ -155,8 +153,9 @@ impl SpotifyPlayer {
     }
 
     async fn connect(
-        mixer: Arc<Mutex<Box<dyn mixer::Mixer>>>,
-    ) -> Result<(Session, Player, UnboundedReceiver<PlayerEvent>), Box<dyn std::error::Error>> {
+        mixer: Mixer,
+    ) -> Result<(Session, Arc<Player>, UnboundedReceiver<PlayerEvent>), Box<dyn std::error::Error>>
+    {
         let session_config = SessionConfig::default();
         let player_config = PlayerConfig::default();
         let audio_format = AudioFormat::default();
@@ -184,18 +183,18 @@ impl SpotifyPlayer {
             }
         };
 
-        let (session, _credentials) =
-            Session::connect(session_config, credentials, Some(cache), true).await?;
+        let session = Session::new(session_config, Some(cache));
+        session.connect(credentials, true).await?;
 
         let backend: fn(Option<String>, AudioFormat) -> Box<dyn audio_backend::Sink> =
             audio_backend::find(None).unwrap();
-        let mixer = mixer.lock().await;
-        let (player, receiver) = Player::new(
+        let player = Player::new(
             player_config,
             session.clone(),
             mixer.get_soft_volume(),
             move || backend(None, audio_format),
         );
+        let receiver = player.get_player_event_channel();
         Ok((session, player, receiver))
     }
 
@@ -206,21 +205,22 @@ impl SpotifyPlayer {
 
             match context_type {
                 "track" => {
-                    spotify_id.audio_type = SpotifyAudioType::Track;
-                    self.play_tracks(Vec::from([spotify_id])).await?;
+                    spotify_id.item_type = SpotifyItemType::Track;
+                    self.play_tracks([spotify_id].iter()).await?;
                     println!("Playing...");
                 }
                 "playlist" => {
-                    let playlist: Playlist = Playlist::get(&session, spotify_id).await.unwrap();
-                    self.play_tracks(playlist.tracks).await?;
+                    let playlist: Playlist = Playlist::get(&session, &spotify_id).await.unwrap();
+                    self.play_tracks(playlist.tracks()).await?;
                 }
                 "album" => {
-                    let album: Album = Album::get(&session, spotify_id).await.unwrap();
-                    self.play_tracks(album.tracks).await?;
+                    let album: Album = Album::get(&session, &spotify_id).await.unwrap();
+                    self.play_tracks(album.tracks()).await?;
                 }
                 "artist" => {
-                    let artist: Artist = Artist::get(&session, spotify_id).await.unwrap();
-                    self.play_tracks(artist.top_tracks).await?;
+                    let artist: Artist = Artist::get(&session, &spotify_id).await.unwrap();
+                    let top_tracks = artist.top_tracks.for_country("DE");
+                    self.play_tracks(top_tracks.iter()).await?;
                 }
                 _ => info!("Unknown spotify context_type"),
             }
@@ -235,9 +235,12 @@ impl SpotifyPlayer {
         Ok(())
     }
 
-    async fn play_tracks(&self, tracks: Vec<SpotifyId>) -> Result<(), Box<dyn std::error::Error>> {
+    async fn play_tracks<'a, T>(&self, tracks: T) -> Result<(), Box<dyn std::error::Error>>
+    where
+        T: Iterator<Item = &'a SpotifyId>,
+    {
         self.player_tx
-            .send(SpotifyPlayerCommand::PlayTracks(tracks))?;
+            .send(SpotifyPlayerCommand::PlayTracks(tracks.cloned().collect()))?;
         Ok(())
     }
 }

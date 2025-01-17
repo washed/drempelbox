@@ -11,7 +11,7 @@ RestartSec=5
 User=drempelbox
 ExecStart=/usr/bin/drempelbox
 CacheDirectory=drempelbox
-Environment=RUST_BACKTRACE=full RUST_LOG=DEBUG XDG_RUNTIME_DIR=/run/user/1337
+Environment=RUST_BACKTRACE=full RUST_LOG="WARN,drempelbox=DEBUG" XDG_RUNTIME_DIR=/run/user/1337
 
 [Install]
 WantedBy=multi-user.target

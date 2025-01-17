@@ -8,7 +8,7 @@ use librespot::playback::config::VolumeCtrl;
 use librespot::playback::mixer;
 use librespot::playback::mixer::MixerConfig;
 use percent_encoding::percent_decode_str;
-use tokio::sync::{mpsc, oneshot, Mutex};
+use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinSet;
 use tracing::{error, info};
 use url::Url;
@@ -29,7 +29,7 @@ pub enum PlayerRequestMessage {
     },
 }
 
-type Mixer = Arc<Mutex<Box<dyn mixer::Mixer>>>;
+pub type Mixer = Arc<dyn mixer::Mixer>;
 
 pub async fn start_player_task(
     join_set: &mut JoinSet<()>,
@@ -103,8 +103,6 @@ pub async fn start_player_task(
 }
 
 async fn set_volume_delta(mixer: &Mixer, delta: f64) -> f64 {
-    let mixer = mixer.lock().await;
-
     // TODO: verify integer math here, make sure we don't explode
     let current_volume = mixer.volume() as i32;
     let volume_step = (VolumeCtrl::MAX_VOLUME as f64 * delta) as i32;
@@ -120,8 +118,6 @@ async fn set_volume_delta(mixer: &Mixer, delta: f64) -> f64 {
 }
 
 async fn set_volume_absolute(mixer: &Mixer, volume: f64) -> f64 {
-    let mixer = mixer.lock().await;
-
     // TODO: verify integer math here, make sure we don't explode
     let requested_volume = volume * VolumeCtrl::MAX_VOLUME as f64;
     let requested_volume = requested_volume.clamp(0.0, u16::MAX as f64) as u16;
@@ -140,7 +136,7 @@ pub fn get_mixer() -> Result<Mixer, Box<dyn std::error::Error>> {
         Some(mixer) => mixer(mixer_config),
         None => return Err(Box::<dyn std::error::Error>::from("Unable to find mixer!")),
     };
-    let mixer = Arc::new(Mutex::new(mixer));
+    // let mixer = Arc::new(Mutex::new(mixer));
     Ok(mixer)
 }
 
