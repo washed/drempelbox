@@ -59,6 +59,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     app_state.amp.power_on().await?;
     sleep(Duration::from_millis(250)).await;
+    app_state.led.on().await?;
 
     while let Some(_res) = join_set.join_next().await {
         let err = _res.err().unwrap().to_string();
