@@ -967,6 +967,7 @@ dependencies = [
 name = "drempelbox"
 version = "0.1.0"
 dependencies = [
+ "alsa",
  "async-std",
  "axum",
  "bitflags 2.8.0",
