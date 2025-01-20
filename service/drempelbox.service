@@ -9,7 +9,6 @@ Type=simple
 Restart=always
 RestartSec=5
 User=drempelbox
-ExecStartPre=amixer -c 0 set Speaker 90%
 ExecStart=/usr/bin/drempelbox
 CacheDirectory=drempelbox
 Environment=RUST_BACKTRACE=full RUST_LOG="WARN,drempelbox=DEBUG" XDG_RUNTIME_DIR=/run/user/1337
