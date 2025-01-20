@@ -68,3 +68,9 @@ amp_power_on:
 
 amp_power_off:
 	curl -X POST -G "http://${CURL_TEST_HOST_PORT}/amp/power-off"
+
+led_on:
+	curl -X POST -G "http://${CURL_TEST_HOST_PORT}/led/led-on"
+
+led_off:
+	curl -X POST -G "http://${CURL_TEST_HOST_PORT}/led/led-off"
