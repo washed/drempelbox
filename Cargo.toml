@@ -24,3 +24,4 @@ pin-project-lite = "0.2.16"
 percent-encoding = "2.3.1"
 rppal = { version = "0.22.1", features = ["hal"] }
 system_shutdown = "4.0.1"
+alsa = "0.9.1"

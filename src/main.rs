@@ -35,11 +35,16 @@ use crate::volume_buttons::VolumeButtons;
 pub mod led;
 use crate::led::Led;
 
+pub mod alsa;
+use crate::alsa::Alsa;
+
 #[tokio::main()]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
     let mut join_set = JoinSet::<()>::new();
+
+    let _alsa = Alsa::new(&mut join_set).await?;
 
     let amp = Amp::new(&mut join_set).await?;
     let amp_player = amp.clone();
