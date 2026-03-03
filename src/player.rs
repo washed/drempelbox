@@ -133,7 +133,7 @@ async fn set_volume_absolute(mixer: &Mixer, volume: f64) -> f64 {
 pub fn get_mixer() -> Result<Mixer, Box<dyn std::error::Error>> {
     let mixer_config = MixerConfig::default();
     let mixer = match mixer::find(Some("softvol")) {
-        Some(mixer) => mixer(mixer_config),
+        Some(mixer) => mixer(mixer_config)?,
         None => return Err(Box::<dyn std::error::Error>::from("Unable to find mixer!")),
     };
     // let mixer = Arc::new(Mutex::new(mixer));

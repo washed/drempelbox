@@ -5,7 +5,7 @@ use librespot::{
         cache::Cache,
         config::SessionConfig,
         session::Session,
-        spotify_id::{SpotifyId, SpotifyItemType},
+        SpotifyUri,
     },
     discovery::{DeviceType, Discovery},
     metadata::Metadata,
@@ -28,7 +28,7 @@ use url::Url;
 use crate::player::Mixer;
 
 pub enum SpotifyPlayerCommand {
-    PlayTracks(Vec<SpotifyId>),
+    PlayTracks(Vec<SpotifyUri>),
     Stop,
 }
 
@@ -83,7 +83,7 @@ impl SpotifyPlayer {
         mut player_rx: UnboundedReceiver<SpotifyPlayerCommand>,
         mut player_event_receiver: UnboundedReceiver<PlayerEvent>,
     ) -> (JoinHandle<()>, JoinHandle<()>) {
-        let tracks: Arc<Mutex<VecDeque<SpotifyId>>> = Arc::new(Mutex::new(VecDeque::new()));
+        let tracks: Arc<Mutex<VecDeque<SpotifyUri>>> = Arc::new(Mutex::new(VecDeque::new()));
         let tracks_command_handler = tracks.clone();
         let tracks_event_handler = tracks.clone();
         let player_command = player.clone();
@@ -94,10 +94,11 @@ impl SpotifyPlayer {
                 let player = player_command.clone();
                 loop {
                     if let Some(command) = player_rx.recv().await {
-                        let mut tracks = tracks_command_handler.lock().await;
+                        let mut tracks: tokio::sync::MutexGuard<'_, VecDeque<SpotifyUri>> =
+                            tracks_command_handler.lock().await;
                         match command {
                             SpotifyPlayerCommand::PlayTracks(new_tracks) => {
-                                let first_track = new_tracks[0];
+                                let first_track = new_tracks[0].clone();
                                 let rest_tracks = new_tracks[1..].to_vec();
 
                                 // start playing the first track immediately
@@ -119,7 +120,8 @@ impl SpotifyPlayer {
                 let player = player_event.clone();
                 loop {
                     if let Some(player_event) = player_event_receiver.recv().await {
-                        let mut tracks = tracks_event_handler.lock().await;
+                        let mut tracks: tokio::sync::MutexGuard<'_, VecDeque<SpotifyUri>> =
+                            tracks_event_handler.lock().await;
 
                         match player_event {
                             PlayerEvent::TimeToPreloadNextTrack {
@@ -128,8 +130,8 @@ impl SpotifyPlayer {
                             } => {
                                 info!("TimeToPreloadNextTrack!");
                                 if let Some(next_track) = tracks.front() {
-                                    info!(next_track.id, "pre-loading");
-                                    player.preload(next_track.to_owned());
+                                    info!("pre-loading: {}", next_track);
+                                    player.preload(next_track.clone());
                                 }
                             }
                             PlayerEvent::EndOfTrack {
@@ -138,7 +140,7 @@ impl SpotifyPlayer {
                             } => {
                                 info!("EndOfTrack!");
                                 if let Some(next_track) = tracks.pop_front() {
-                                    info!(next_track.id, "playing");
+                                    info!("playing: {}", next_track);
                                     player.load(next_track, true, 0);
                                 }
                             }
@@ -199,26 +201,26 @@ impl SpotifyPlayer {
     }
 
     pub async fn play_from_url(&mut self, url: Url) -> Result<(), Box<dyn std::error::Error>> {
-        if let Some((context_type, spotify_id)) = url.path().trim_matches('/').split_once('/') {
-            let mut spotify_id = SpotifyId::from_base62(spotify_id).unwrap();
+        if let Some((context_type, spotify_id_str)) = url.path().trim_matches('/').split_once('/') {
+            // Create a Spotify URI from the type and ID
+            let spotify_uri = SpotifyUri::from_uri(&format!("spotify:{}:{}", context_type, spotify_id_str))?;
             let session = self.session.lock().await;
 
             match context_type {
                 "track" => {
-                    spotify_id.item_type = SpotifyItemType::Track;
-                    self.play_tracks([spotify_id].iter()).await?;
+                    self.play_tracks([spotify_uri].iter()).await?;
                     println!("Playing...");
                 }
                 "playlist" => {
-                    let playlist: Playlist = Playlist::get(&session, &spotify_id).await.unwrap();
+                    let playlist: Playlist = Playlist::get(&session, &spotify_uri).await?;
                     self.play_tracks(playlist.tracks()).await?;
                 }
                 "album" => {
-                    let album: Album = Album::get(&session, &spotify_id).await.unwrap();
+                    let album: Album = Album::get(&session, &spotify_uri).await?;
                     self.play_tracks(album.tracks()).await?;
                 }
                 "artist" => {
-                    let artist: Artist = Artist::get(&session, &spotify_id).await.unwrap();
+                    let artist: Artist = Artist::get(&session, &spotify_uri).await?;
                     let top_tracks = artist.top_tracks.for_country("DE");
                     self.play_tracks(top_tracks.iter()).await?;
                 }
@@ -237,7 +239,7 @@ impl SpotifyPlayer {
 
     async fn play_tracks<'a, T>(&self, tracks: T) -> Result<(), Box<dyn std::error::Error>>
     where
-        T: Iterator<Item = &'a SpotifyId>,
+        T: Iterator<Item = &'a SpotifyUri>,
     {
         self.player_tx
             .send(SpotifyPlayerCommand::PlayTracks(tracks.cloned().collect()))?;
